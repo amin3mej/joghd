@@ -82,8 +82,7 @@ Dispatch a fresh session (`returnResult`: true) that:
 - Do **not** resolve the reviewer's threads — resolving their feedback hides it;
   they resolve it themselves.
 - Re-requests review from the human code owner: `gh pr edit <url> --add-reviewer
-  amin3mej`. (`gh pr ready` does not request a new review once the PR is already
-  ready.)
+  amin3mej`.
 - Re-enables auto-merge: `gh pr merge <url> --auto --squash`.
 - Returns the PR URL and a one-line summary, or a precise error.
 
