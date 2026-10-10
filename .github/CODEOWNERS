@@ -1,0 +1,6 @@
+# Default code owner.
+
+# The repo requires a code-owner approval to merge (see the "Main" ruleset).
+# Every change needs @amin3mej's approval. The autonomous worker must open PRs
+# as a *different* identity, otherwise its PRs can never receive this review.
+* @amin3mej
