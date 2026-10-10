@@ -10,9 +10,12 @@ a PR, post an AI review, and enable auto-merge. The queue is Linear team `JOG`.
 list_issues: team "JOG", label "ready-for-agent", assignee "null"
 ```
 
-Walk the results oldest-first. For each candidate, confirm it has no open
-blockers (`get_issue` with `includeRelations: true`; skip if `blockedBy` lists
-anything not `Done`). The first unblocked, unassigned issue is your target.
+Walk the results by **urgency, most urgent first** — Linear `priority` orders
+`1` (Urgent) ahead of `2` (High), `3` (Medium), `4` (Low), and `0` (No
+priority). Break ties oldest-first, so high-priority work is never starved by
+older low-priority tickets. For each candidate, confirm it has no open blockers
+(`get_issue` with `includeRelations: true`; skip if `blockedBy` lists anything
+not `Done`). The first unblocked, unassigned issue is your target.
 
 No target → report "queue empty" and stop. Do not invent work.
 
@@ -47,7 +50,9 @@ acceptance criteria, plus these instructions:
 - Return the PR URL and a one-line summary, or a precise error if you fail.
 
 If the dispatch tool is not available, do the same yourself: `git worktree add
-<path> main`, implement there, then `git worktree remove` once the PR is open.
+<path> main` and implement there. **Keep the worktree while the PR is open** —
+remove it only once the PR has merged (the shepherd reaps the merge and cleans
+it up).
 
 ## 4. AI review
 
@@ -76,6 +81,12 @@ say so on the ticket.
 If anything in steps 2–5 fails:
 
 - `save_comment` on the ticket: what broke, what you tried, the exact error.
+- **Notify the human**: `@`-mention `@amin3mej` in that comment so they are
+  pinged to investigate and fix it.
+- **Open a failure ticket** in team `JOG`, titled `Worker failure: <issue-id>`,
+  so the failure is tracked and triaged rather than buried in a comment.
+  Describe what broke, what you tried, and the exact error; `addLabels
+  ["ready-for-human"]`. Link it from the comment on the stuck ticket.
 - Then mark it so it isn't silently re-picked:
   - **Permanent** (you can't solve it): `addLabels ["needs-info"]`,
     `assignee null`, state `"Todo"`.

@@ -14,7 +14,8 @@ These are tickets whose PR is open with auto-merge enabled. For each, read the
 PR URL from your earlier comment and check it with
 `gh pr view <url> --json state,mergedAt,mergeStateStatus`:
 
-- **merged** → `save_issue` state `"Done"`; comment `Merged: <url>`.
+- **merged** → `save_issue` state `"Done"`; comment `Merged: <url>`; remove the
+  PR's worktree (`git worktree remove <path>`).
 - **closed, not merged** → comment why; `addLabels ["needs-info"]`,
   `assignee null`, state `"Todo"`.
 - **still open** (checks running, awaiting review, conflict) → leave it; the
@@ -103,6 +104,12 @@ cannot approve its own work anyway. Leave the ticket `In Review`.
 If anything in steps 0–1 fails:
 
 - `save_comment` on the ticket: what broke, what you tried, the exact error.
+- **Notify the human**: `@`-mention `@amin3mej` in that comment so they are
+  pinged to investigate and fix it.
+- **Open a failure ticket** in team `JOG`, titled `Worker failure: <issue-id>`,
+  so the failure is tracked and triaged rather than buried in a comment.
+  Describe what broke, what you tried, and the exact error; `addLabels
+  ["ready-for-human"]`. Link it from the comment on the stuck ticket.
 - The ticket already has an open PR, so do not put it back on `ready-for-agent`
   (that re-sows it as new work):
   - **Transient** (environment, flaky CI, tool error) → leave it `In Review`;
