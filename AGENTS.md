@@ -14,4 +14,4 @@ Single-context; `GLOSSARY.md` and `docs/adr/` live one level up, in the project 
 
 ### Autonomous worker
 
-A scheduled task (every 30 min) drains the `ready-for-agent` queue: claims one ticket, implements it in a worktree, opens a PR, posts an AI review, and enables auto-merge. See `docs/agents/autonomous-worker.md`.
+Two scheduled tasks: **author** drains the `ready-for-agent` queue (claims one ticket, implements it in a worktree, opens a PR, posts an AI review, enables auto-merge); **shepherd** tends `In Review` PRs (reaps merged ones, addresses review feedback). See `docs/agents/autonomous-worker.md`.
