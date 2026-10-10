@@ -21,11 +21,11 @@ PR URL from your earlier comment and check it with
 - **still open** (checks running, awaiting review, conflict) → leave it; the
   next run reaps it.
 
-## 1. Respond to review feedback
+## 1. Respond to change requests
 
-Both the human reviewer (`amin3mej`, via the required code-owner approval) and
-the AI reviewer will request changes on open PRs, and those changes must be
-addressed before the PR can merge. This step picks up that feedback.
+The human reviewer (`amin3mej`, via the required code-owner approval) and the AI
+reviewer each signal "something must change" with a **`Request changes`**
+review. Address the open request whenever there is one.
 
 Reuse Reap's scan:
 
@@ -33,54 +33,34 @@ Reuse Reap's scan:
 list_issues: team "JOG", assignee "me", state "In Review"
 ```
 
-For each ticket, decide whether its PR has **new reviewer feedback** since the
-bot last pushed. A reviewer can block the PR with a submitted `CHANGES_REQUESTED`
-review, or just leave a comment — top-level or inline — without submitting a
-review. Watch all three.
-
-`gh pr view --json reviewThreads` is rejected as an unknown field, so read the
-sources from the REST API. Here `<n>` is the PR number from the URL, and
-`{owner}` / `{repo}` resolve to this repo:
+For each ticket, a PR needs work when it has a `CHANGES_REQUESTED` review **on
+its current head commit**:
 
 ```sh
-# newest reviewer timestamp from submitted reviews, inline review comments, and top-level comments
-gh api repos/{owner}/{repo}/pulls/<n>/reviews --jq '
-  [ .[] | select(.user.login != "joghd-bot" and .user.login != "linear-code[bot]"
-      and .state != "APPROVED" and .state != "DISMISSED") | .submitted_at ] | sort | last
+gh pr view <url> --json reviews,headRefOid --jq '
+  . as $p
+  | [ $p.reviews[] | select(.state == "CHANGES_REQUESTED" and .commit.oid == $p.headRefOid) ] | length
 '
-gh api repos/{owner}/{repo}/pulls/<n>/comments --jq '
-  [ .[] | select(.user.login != "joghd-bot" and .user.login != "linear-code[bot]") | .created_at ] | sort | last
-'
-gh api repos/{owner}/{repo}/issues/<n>/comments --jq '
-  [ .[] | select(.user.login != "joghd-bot" and .user.login != "linear-code[bot]") | .created_at ] | sort | last
-'
-# the worker's last push
-gh pr view <url> --json commits --jq '.commits[-1].committedDate'
 ```
 
-- Take the newest of the three timestamps. If it is **after** the head commit's
-  `committedDate`, the reviewer left feedback the bot hasn't addressed yet →
+- **`> 0`** → a reviewer requested changes and nothing has been pushed since →
   that ticket is your target.
-- If it is **before** (or all three are empty — no feedback yet), the bot already
-  pushed for the latest round; leave it for the reviewer to re-review.
+- **`0`** → no open change request; skip it.
 
-**Watch every reviewer, human and AI.** Only two actors are ignored, or the loop
-retriggers forever:
+A review is pinned to the commit it was submitted against. Once the worker pushes
+a fix, the head moves past it and the request reads as addressed; a fresh
+`Request changes` on the new head re-opens it. Checking against the head commit
+(rather than `reviewDecision` alone) is what stops the loop — `reviewDecision`
+stays `CHANGES_REQUESTED` until the reviewer re-reviews, so the plain flag would
+re-fire every run.
 
-- `joghd-bot` — the worker itself: its own `Fixed in <sha>` replies and
-  author-stage AI-review threads. It is a normal user account
-  (`user.type == "User"`), so exclude it by login, not by bot type.
-- `linear-code[bot]` — Linear's issue linkback, pure noise.
+Because this keys on review state, it ignores everything that is not a change
+request: plain comments, approvals, dismissed reviews, and non-actionable bot
+chatter (CodeRabbit's summary, Linear's linkback). No author filtering is needed
+either — GitHub forbids the PR author from reviewing its own PR, so the worker
+cannot trigger itself.
 
-Everything else counts, **including AI reviewers** such as `coderabbitai[bot]` —
-the shepherd addresses their feedback too. Compare timestamps, never
-`reviewDecision` alone: `CHANGES_REQUESTED` stays set from the moment changes are
-requested until the reviewer re-reviews, which includes the whole window where
-the fix is already pushed and waiting. The timestamp is what stops the loop
-re-fixing the same round forever.
-
-**First unaddressed target wins.** No target → report "no review feedback to
-address" and stop.
+**First open request wins.** No target → report "no change requests" and stop.
 
 ### Address the feedback
 
@@ -135,8 +115,8 @@ If anything in steps 0–1 fails:
 
 - **One response per run** — address at most one PR's feedback, even if several
   have new feedback.
-- **Address each review round once** — use the head-commit timestamp to tell a
-  new round of feedback from one you already pushed for.
+- **Address each change request once** — a `CHANGES_REQUESTED` review on the
+  current head is open; once you push, it reads as addressed.
 - **React, don't reply** — a 👍 marks a comment the commit resolved; reply only
   to answer a question, disagree, or add context.
 - **Merge only via auto-merge.** Never force-merge a PR whose checks or review
