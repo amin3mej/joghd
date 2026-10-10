@@ -47,6 +47,9 @@ to MPL-covered source files must remain under MPL. New files can use another
 license only if they contain no MPL-covered code; private modifications do not
 need to be published.
 
+A permissive license such as MIT is not copyleft — it lets others close the
+source — so it does not meet the copyleft requirement.
+
 GPLv3 permits DRM, but its anti-circumvention rules limit legal protection
 for measures that restrict GPL rights, and Apple's App Store terms separately
 restrict interference with Apple's DRM and security mechanisms. Whether a
