@@ -94,9 +94,16 @@ Dispatch a fresh session (`returnResult`: true) that:
   `docs/agents/domain.md`, `../GLOSSARY.md`, and any relevant `../docs/adr/`.
 - Implements the changes with `/implement` (drives `/tdd`, closes with
   `/code-review`).
-- Pushes to the same branch; reply to each reviewer thread with `Fixed in
-  <sha>`. Do **not** resolve the reviewer's threads — resolving their feedback
-  hides it; they resolve it themselves.
+- Pushes to the same branch.
+- Signals each reviewer comment. **Default: react with 👍** when the commit
+  resolves it and no written answer is needed — do not reply:
+  - inline comment → `gh api -X POST repos/{owner}/{repo}/pulls/comments/<comment_id>/reactions -f content=+1`
+  - top-level comment → `gh api -X POST repos/{owner}/{repo}/issues/comments/<comment_id>/reactions -f content=+1`
+- **Reply only** when you are answering a question, disagreeing, or adding
+  context the reviewer needs. Keep it short and name the commit
+  (`Fixed in <sha> — …`, `Disagree: …`).
+- Do **not** resolve the reviewer's threads — resolving their feedback hides it;
+  they resolve it themselves.
 - Re-requests review (`gh pr ready <url>` or re-request the reviewer).
 - Re-enables auto-merge: `gh pr merge <url> --auto --squash`.
 - Returns the PR URL and a one-line summary, or a precise error.
@@ -130,6 +137,8 @@ If anything in steps 0–1 fails:
   have new feedback.
 - **Address each review round once** — use the head-commit timestamp to tell a
   new round of feedback from one you already pushed for.
+- **React, don't reply** — a 👍 marks a comment the commit resolved; reply only
+  to answer a question, disagree, or add context.
 - **Merge only via auto-merge.** Never force-merge a PR whose checks or review
   haven't passed.
 - **Never delete** tickets or comments to "clean up"; only comment.
