@@ -37,3 +37,13 @@ ios/
 ```
 
 Bundle identifier: `dev.djawadi.joghd.ios`. Scheme: `Joghd`.
+
+## License
+
+MPL-2.0 (Mozilla Public License 2.0). See [`LICENSE`](LICENSE).
+
+We chose a **file-level (weak) copyleft** license: modified files stay open,
+but new files can be proprietary, so the app can ship on the App Store. The
+GPL family is generally incompatible with App Store distribution because its
+whole-program copyleft and anti-DRM terms conflict with Apple's App Store
+requirements; MPL-2.0 has no such clauses and adds a patent grant.
