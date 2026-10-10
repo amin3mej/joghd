@@ -1,0 +1,11 @@
+# XcodeGen output (regenerate with `xcodegen generate`)
+Joghd.xcodeproj/
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+
+# macOS
+.DS_Store
