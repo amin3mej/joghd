@@ -23,9 +23,9 @@ PR URL from your earlier comment and check it with
 
 ## 1. Respond to review feedback
 
-The required code-owner approval means the reviewer (`amin3mej`) will request
-changes on open PRs, and those changes must be addressed before the PR can
-merge. This step picks up that feedback.
+Both the human reviewer (`amin3mej`, via the required code-owner approval) and
+the AI reviewer will request changes on open PRs, and those changes must be
+addressed before the PR can merge. This step picks up that feedback.
 
 Reuse Reap's scan:
 
@@ -33,8 +33,8 @@ Reuse Reap's scan:
 list_issues: team "JOG", assignee "me", state "In Review"
 ```
 
-For each ticket, decide whether its PR has **new human feedback** since the bot
-last pushed. A reviewer can block the PR with a submitted `CHANGES_REQUESTED`
+For each ticket, decide whether its PR has **new reviewer feedback** since the
+bot last pushed. A reviewer can block the PR with a submitted `CHANGES_REQUESTED`
 review, or just leave a comment — top-level or inline — without submitting a
 review. Watch all three.
 
@@ -43,18 +43,18 @@ sources from the REST API. Here `<n>` is the PR number from the URL, and
 `{owner}` / `{repo}` resolve to this repo:
 
 ```sh
-# newest human timestamp from submitted reviews, inline review comments, and top-level comments
+# newest reviewer timestamp from submitted reviews, inline review comments, and top-level comments
 gh api repos/{owner}/{repo}/pulls/<n>/reviews --jq '
-  [ .[] | select(.user.type != "Bot" and .user.login != "joghd-bot"
+  [ .[] | select(.user.login != "joghd-bot" and .user.login != "linear-code[bot]"
       and .state != "APPROVED" and .state != "DISMISSED") | .submitted_at ] | sort | last
 '
 gh api repos/{owner}/{repo}/pulls/<n>/comments --jq '
-  [ .[] | select(.user.type != "Bot" and .user.login != "joghd-bot") | .created_at ] | sort | last
+  [ .[] | select(.user.login != "joghd-bot" and .user.login != "linear-code[bot]") | .created_at ] | sort | last
 '
 gh api repos/{owner}/{repo}/issues/<n>/comments --jq '
-  [ .[] | select(.user.type != "Bot" and .user.login != "joghd-bot") | .created_at ] | sort | last
+  [ .[] | select(.user.login != "joghd-bot" and .user.login != "linear-code[bot]") | .created_at ] | sort | last
 '
-# the bot's last push
+# the worker's last push
 gh pr view <url> --json commits --jq '.commits[-1].committedDate'
 ```
 
@@ -64,22 +64,27 @@ gh pr view <url> --json commits --jq '.commits[-1].committedDate'
 - If it is **before** (or all three are empty — no feedback yet), the bot already
   pushed for the latest round; leave it for the reviewer to re-review.
 
-Filter out the worker **and** every other bot, or the loop retriggers forever:
-`joghd-bot`'s own `Fixed in <sha>` replies and AI-review threads, plus unrelated
-bots (`coderabbitai`, `linear-code`). `user.type == "Bot"` drops the App bots;
-`joghd-bot` is a normal account, so exclude it by login. Compare timestamps,
-never `reviewDecision` alone: `CHANGES_REQUESTED` stays set from the moment
-changes are requested until the reviewer re-reviews, which includes the whole
-window where the fix is already pushed and waiting. The timestamp is what stops
-the loop re-fixing the same round forever.
+**Watch every reviewer, human and AI.** Only two actors are ignored, or the loop
+retriggers forever:
+
+- `joghd-bot` — the worker itself: its own `Fixed in <sha>` replies and
+  author-stage AI-review threads. It is a normal user account
+  (`user.type == "User"`), so exclude it by login, not by bot type.
+- `linear-code[bot]` — Linear's issue linkback, pure noise.
+
+Everything else counts, **including AI reviewers** such as `coderabbitai[bot]` —
+the shepherd addresses their feedback too. Compare timestamps, never
+`reviewDecision` alone: `CHANGES_REQUESTED` stays set from the moment changes are
+requested until the reviewer re-reviews, which includes the whole window where
+the fix is already pushed and waiting. The timestamp is what stops the loop
+re-fixing the same round forever.
 
 **First unaddressed target wins.** No target → report "no review feedback to
 address" and stop.
 
 ### Address the feedback
 
-Dispatch a fresh session (`returnResult`: true, model
-`opencode-go/deepseek-v4-pro`) that:
+Dispatch a fresh session (`returnResult`: true) that:
 
 - Checks out the PR's branch — `gh pr checkout <url>` — in a worktree. Do not
   start a new branch from `main`.

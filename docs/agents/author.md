@@ -37,7 +37,6 @@ Dispatch a fresh session in a new worktree (OpenChamber `session.create`):
 
 - `worktree`: `<issue-id>-<kebab-case-title>`
 - `returnResult`: true
-- model: `opencode-go/deepseek-v4-pro`
 
 The dispatched prompt must carry the issue identifier, title, description, and
 acceptance criteria, plus these instructions:
