@@ -43,17 +43,19 @@ gh pr view <url> --json reviewDecision --jq .reviewDecision
 - **`CHANGES_REQUESTED`** → a reviewer is blocking; that ticket is your target.
 - **anything else** (`APPROVED`, `REVIEW_REQUIRED`, `null`) → skip it.
 
-This is the deliberate signal — a reviewer asks for a change and the worker makes
-it — and it ignores everything else: plain comments, approvals, dismissed
-reviews, and non-actionable bot chatter (CodeRabbit's summary, Linear's
-linkback). No author filtering is needed, since GitHub forbids the PR author from
-reviewing its own PR.
+This is the deliberate signal — a reviewer, **human or AI**, asks for a change and
+the worker makes it. AI reviewers are not excluded: `coderabbitai` submits
+`Request changes` reviews exactly like the human does, and its findings are
+addressed the same way. It ignores only approvals and dismissed reviews (and the
+worker's own output). No per-author filtering is needed, since GitHub forbids the
+PR author from reviewing its own PR.
 
 `reviewDecision` stays `CHANGES_REQUESTED` until the reviewer re-reviews, so after
 pushing a fix **re-request review** from the requester — that is what clears the
-request (or re-opens it with new feedback). If you have already replied to or
-👍-ed the request's comments, it is handled: re-request review and stop rather
-than re-fixing.
+request (or re-opens it with new feedback). If the first ticket's request is
+already handled (you have replied to or 👍-ed its comments), re-request review and
+**keep scanning** the remaining tickets for an unanswered request — but do not
+make a second fix in the same run.
 
 **First open request wins.** No target → report "no change requests" and stop.
 
@@ -79,7 +81,9 @@ Dispatch a fresh session (`returnResult`: true) that:
   (`Fixed in <sha> — …`, `Disagree: …`).
 - Do **not** resolve the reviewer's threads — resolving their feedback hides it;
   they resolve it themselves.
-- Re-requests review (`gh pr ready <url>` or re-request the reviewer).
+- Re-requests review from the human code owner: `gh pr edit <url> --add-reviewer
+  amin3mej`. (`gh pr ready` does not request a new review once the PR is already
+  ready.)
 - Re-enables auto-merge: `gh pr merge <url> --auto --squash`.
 - Returns the PR URL and a one-line summary, or a precise error.
 

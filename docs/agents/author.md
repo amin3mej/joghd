@@ -48,10 +48,12 @@ acceptance criteria, plus these instructions:
 - Open a pull request — do **not** merge. Use `/pr` for the body.
 - Return the PR URL and a one-line summary, or a precise error if you fail.
 
-If the dispatch tool is not available, do the same yourself: `git worktree add
-<path> main` and implement there. **Keep the worktree while the PR is open** —
-remove it only once the PR has merged (the shepherd reaps the merge and cleans
-it up).
+If the dispatch tool is not available, do the same yourself: create a fresh
+per-ticket branch off `main` and implement there — `git worktree add -b
+<issue-id>-<kebab-case-title> <path> main`. Check out a **new** branch, not
+`main` itself, so the worktree can be added even when `main` is already active.
+**Keep the worktree while the PR is open** — remove it only once the PR has
+merged (the shepherd reaps the merge and cleans it up).
 
 ## 4. AI review
 
