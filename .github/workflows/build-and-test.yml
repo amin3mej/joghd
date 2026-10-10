@@ -1,0 +1,26 @@
+name: Build and test
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    name: setup
+    uses: ./.github/workflows/setup.yml
+    permissions:
+      contents: read
+
+  test:
+    name: test
+    needs: setup
+    uses: ./.github/workflows/test.yml
+    permissions:
+      contents: read
