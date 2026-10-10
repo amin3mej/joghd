@@ -24,8 +24,9 @@ PR URL from your earlier comment and check it with
 ## 1. Respond to change requests
 
 The human reviewer (`amin3mej`, via the required code-owner approval) and the AI
-reviewer each signal "something must change" with a **`Request changes`**
-review. Address the open request whenever there is one.
+reviewer each signal "something must change" with a **`Request changes`** review.
+That sets the PR's review decision to `CHANGES_REQUESTED`; address the PR while
+that is the state.
 
 Reuse Reap's scan:
 
@@ -33,32 +34,26 @@ Reuse Reap's scan:
 list_issues: team "JOG", assignee "me", state "In Review"
 ```
 
-For each ticket, a PR needs work when it has a `CHANGES_REQUESTED` review **on
-its current head commit**:
+For each ticket, read the PR's review decision:
 
 ```sh
-gh pr view <url> --json reviews,headRefOid --jq '
-  . as $p
-  | [ $p.reviews[] | select(.state == "CHANGES_REQUESTED" and .commit.oid == $p.headRefOid) ] | length
-'
+gh pr view <url> --json reviewDecision --jq .reviewDecision
 ```
 
-- **`> 0`** → a reviewer requested changes and nothing has been pushed since →
-  that ticket is your target.
-- **`0`** → no open change request; skip it.
+- **`CHANGES_REQUESTED`** → a reviewer is blocking; that ticket is your target.
+- **anything else** (`APPROVED`, `REVIEW_REQUIRED`, `null`) → skip it.
 
-A review is pinned to the commit it was submitted against. Once the worker pushes
-a fix, the head moves past it and the request reads as addressed; a fresh
-`Request changes` on the new head re-opens it. Checking against the head commit
-(rather than `reviewDecision` alone) is what stops the loop — `reviewDecision`
-stays `CHANGES_REQUESTED` until the reviewer re-reviews, so the plain flag would
-re-fire every run.
+This is the deliberate signal — a reviewer asks for a change and the worker makes
+it — and it ignores everything else: plain comments, approvals, dismissed
+reviews, and non-actionable bot chatter (CodeRabbit's summary, Linear's
+linkback). No author filtering is needed, since GitHub forbids the PR author from
+reviewing its own PR.
 
-Because this keys on review state, it ignores everything that is not a change
-request: plain comments, approvals, dismissed reviews, and non-actionable bot
-chatter (CodeRabbit's summary, Linear's linkback). No author filtering is needed
-either — GitHub forbids the PR author from reviewing its own PR, so the worker
-cannot trigger itself.
+`reviewDecision` stays `CHANGES_REQUESTED` until the reviewer re-reviews, so after
+pushing a fix **re-request review** from the requester — that is what clears the
+request (or re-opens it with new feedback). If you have already replied to or
+👍-ed the request's comments, it is handled: re-request review and stop rather
+than re-fixing.
 
 **First open request wins.** No target → report "no change requests" and stop.
 
@@ -115,8 +110,9 @@ If anything in steps 0–1 fails:
 
 - **One response per run** — address at most one PR's feedback, even if several
   have new feedback.
-- **Address each change request once** — a `CHANGES_REQUESTED` review on the
-  current head is open; once you push, it reads as addressed.
+- **Address each change request once** — `reviewDecision` stays
+  `CHANGES_REQUESTED` until the reviewer re-reviews, so don't re-fix a request
+  you've already answered.
 - **React, don't reply** — a 👍 marks a comment the commit resolved; reply only
   to answer a question, disagree, or add context.
 - **Merge only via auto-merge.** Never force-merge a PR whose checks or review
