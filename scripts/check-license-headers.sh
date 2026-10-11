@@ -18,11 +18,16 @@ expected_header() {
   esac
 }
 
-# Print the first line of the file that is not a shebang.
+# Print the header line of the file: its first line, or its second when the
+# first is a shebang. Only a leading shebang is skipped, and a final line
+# without a trailing newline still counts.
 first_code_line() {
-  local line
-  while IFS= read -r line; do
-    [[ "$line" == '#!'* ]] && continue
+  local line is_first=1
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if ((is_first)) && [[ "$line" == '#!'* ]]; then
+      is_first=0
+      continue
+    fi
     printf '%s' "$line"
     return 0
   done < "$1"
