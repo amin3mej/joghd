@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LibraryGridView: View {
     let entries: [LibraryEntry]
+    let onDelete: (LibraryEntry) -> Void
 
     var body: some View {
         ScrollView {
@@ -11,6 +12,11 @@ struct LibraryGridView: View {
             ) {
                 ForEach(entries) { entry in
                     LibraryEntryCell(entry: entry)
+                        .contextMenu {
+                            Button("Delete", role: .destructive) {
+                                onDelete(entry)
+                            }
+                        }
                 }
             }
             .padding()
@@ -21,5 +27,5 @@ struct LibraryGridView: View {
 #Preview {
     LibraryGridView(
         entries: [LibraryEntry(title: "Dune", author: "Frank Herbert", format: .epub)]
-    )
+    ) { _ in }
 }

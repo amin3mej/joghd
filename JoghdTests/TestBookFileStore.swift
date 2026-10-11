@@ -9,6 +9,7 @@ final class TestBookFileStore: BookFileStore {
     }
 
     var storedSources: [UUID: URL] = [:]
+    private(set) var removedEntries: [UUID] = []
     var storedData: [UUID: Data] = [:]
     var shouldFail = false
 
@@ -18,5 +19,10 @@ final class TestBookFileStore: BookFileStore {
         storedSources[entry.id] = source
         storedData[entry.id] = try Data(contentsOf: source)
         return source
+    }
+
+    func remove(for entry: LibraryEntry) throws {
+        if shouldFail { throw Failure.unavailable }
+        removedEntries.append(entry.id)
     }
 }

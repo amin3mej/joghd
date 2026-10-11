@@ -5,36 +5,59 @@ struct LibraryView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Binding var isImporting: Bool
     @State private var loadError: String?
+    @State private var entryPendingDeletion: LibraryEntry?
+    @State private var deleteError: String?
 
     var body: some View {
         NavigationStack {
-            Group {
-                if let loadError {
-                    ContentUnavailableView {
-                        Label("Library unavailable", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(loadError)
-                    } actions: {
-                        Button("Retry", action: reload)
-                    }
-                } else if library.entries.isEmpty {
-                    emptyState
-                } else {
-                    grid
+            deleteAlerts(libraryContent)
+                .navigationTitle("Library")
+                .onChange(of: scenePhase, initial: true) { _, phase in
+                    if phase == .active { reload() }
                 }
-            }
-            .navigationTitle("Library")
-            .onChange(of: scenePhase, initial: true) { _, phase in
-                if phase == .active { reload() }
-            }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Import", systemImage: "plus") {
-                        isImporting = true
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Import", systemImage: "plus") {
+                            isImporting = true
+                        }
                     }
                 }
-            }
         }
+    }
+
+    @ViewBuilder
+    private var libraryContent: some View {
+        if let loadError {
+            ContentUnavailableView {
+                Label("Library unavailable", systemImage: "exclamationmark.triangle")
+            } description: {
+                Text(loadError)
+            } actions: {
+                Button("Retry", action: reload)
+            }
+        } else if library.entries.isEmpty {
+            emptyState
+        } else {
+            grid
+        }
+    }
+
+    private var isConfirmingDeletion: Binding<Bool> {
+        Binding(
+            get: { entryPendingDeletion != nil },
+            set: { isConfirming in
+                if !isConfirming { entryPendingDeletion = nil }
+            }
+        )
+    }
+
+    private var isShowingDeleteError: Binding<Bool> {
+        Binding(
+            get: { deleteError != nil },
+            set: { isShowing in
+                if !isShowing { deleteError = nil }
+            }
+        )
     }
 
     private var emptyState: some View {
@@ -46,7 +69,31 @@ struct LibraryView: View {
     }
 
     private var grid: some View {
-        LibraryGridView(entries: library.entries)
+        LibraryGridView(entries: library.entries) { entry in
+            entryPendingDeletion = entry
+        }
+    }
+
+    private func deleteAlerts<Content: View>(_ content: Content) -> some View {
+        content
+            .confirmationDialog(
+                "Delete this book?",
+                isPresented: isConfirmingDeletion,
+                presenting: entryPendingDeletion
+            ) { entry in
+                Button("Delete", role: .destructive) {
+                    delete(entry)
+                }
+            } message: { entry in
+                Text("\"\(entry.title)\" and its file will be removed.")
+            }
+            .alert("Couldn't delete", isPresented: isShowingDeleteError) {
+                Button("OK", role: .cancel) {
+                    deleteError = nil
+                }
+            } message: {
+                Text(deleteError ?? "")
+            }
     }
 
     private func reload() {
@@ -57,9 +104,23 @@ struct LibraryView: View {
             loadError = error.localizedDescription
         }
     }
+
+    private func delete(_ entry: LibraryEntry) {
+        do {
+            try library.delete(entry)
+            deleteError = nil
+        } catch {
+            deleteError = error.localizedDescription
+        }
+    }
 }
 
 #Preview {
     LibraryView(isImporting: .constant(false))
-        .environment(LibraryStore(repository: PreviewLibraryRepository()))
+        .environment(
+            LibraryStore(
+                repository: PreviewLibraryRepository(),
+                fileStore: PreviewBookFileStore()
+            )
+        )
 }

@@ -51,8 +51,14 @@ struct JoghdApp: App {
     }
 
     init() {
-        _library = State(initialValue: LibraryStore(repository: FileLibraryRepository()))
-        importService = ImportService(fileStore: FileBookFileStore())
+        let fileStore = FileBookFileStore()
+        _library = State(
+            initialValue: LibraryStore(
+                repository: FileLibraryRepository(),
+                fileStore: fileStore
+            )
+        )
+        importService = ImportService(fileStore: fileStore)
     }
 
     private func handleSelection(_ result: Result<URL, any Error>) {
