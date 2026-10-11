@@ -1,1 +1,11 @@
+# CI and workflow configuration: an untrusted pull request must not be able to
+# rewrite the checks, the build, or the merge process itself, so any change here
+# requires a maintainer's review.
+/.github/ @amin3mej
+
+# The project manifest is the source of truth for the generated Xcode project;
+# require a maintainer's review before it changes.
+/project.yml @amin3mej
+
+# Everything else defaults to a maintainer's review for now.
 * @amin3mej
