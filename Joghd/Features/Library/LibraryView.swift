@@ -3,17 +3,31 @@ import SwiftUI
 /// The reader's home screen: the on-device book library.
 struct LibraryView: View {
     @Environment(LibraryStore.self) private var library
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var loadError: String?
 
     var body: some View {
         NavigationStack {
             Group {
-                if library.entries.isEmpty {
+                if let loadError {
+                    ContentUnavailableView {
+                        Label("Library unavailable", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text(loadError)
+                    } actions: {
+                        Button("Retry", action: reload)
+                    }
+                } else if library.entries.isEmpty {
                     emptyState
                 } else {
                     list
                 }
             }
             .navigationTitle("Library")
+            .task { reload() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { reload() }
+            }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Import", systemImage: "plus") {
@@ -21,6 +35,15 @@ struct LibraryView: View {
                     }
                 }
             }
+        }
+    }
+
+    private func reload() {
+        do {
+            try library.reload()
+            loadError = nil
+        } catch {
+            loadError = error.localizedDescription
         }
     }
 
@@ -41,5 +64,11 @@ struct LibraryView: View {
 
 #Preview {
     LibraryView()
-        .environment(LibraryStore())
+        .environment(LibraryStore(repository: PreviewLibraryRepository()))
+}
+
+@MainActor
+private struct PreviewLibraryRepository: LibraryRepository {
+    func entries() throws -> [LibraryEntry] { [] }
+    func add(_ entry: LibraryEntry) throws {}
 }
