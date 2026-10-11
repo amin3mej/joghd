@@ -11,6 +11,11 @@ jobs:
     name: setup
     runs-on: macos-15
     steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
       - name: Prepare
         uses: ./.github/actions/setup
 
