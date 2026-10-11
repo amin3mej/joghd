@@ -57,4 +57,46 @@ struct FileBookFileStoreTests {
 
         #expect(try Data(contentsOf: source) == originalBytes)
     }
+
+    @Test
+    func removingEntryDeletesItsStoredFile() throws {
+        let source = try makeSourceFile()
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+        let (store, directory) = makeStore()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let entry = LibraryEntry(title: "Dune", format: .epub)
+        let stored = try store.store(source, for: entry)
+
+        try store.remove(for: entry)
+
+        #expect(!FileManager.default.fileExists(atPath: stored.path))
+        #expect(!FileManager.default.fileExists(atPath: stored.deletingLastPathComponent().path))
+    }
+
+    @Test
+    func removingEntryWithoutStoredFileSucceeds() throws {
+        let (store, directory) = makeStore()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        #expect(throws: Never.self) {
+            try store.remove(for: LibraryEntry(title: "Dune", format: .epub))
+        }
+    }
+
+    @Test
+    func removingOneEntryLeavesAnotherEntryFile() throws {
+        let source = try makeSourceFile()
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+        let (store, directory) = makeStore()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let kept = LibraryEntry(title: "Dune", format: .epub)
+        let removed = LibraryEntry(title: "Foundation", format: .epub)
+        let keptFile = try store.store(source, for: kept)
+        let removedFile = try store.store(source, for: removed)
+
+        try store.remove(for: removed)
+
+        #expect(FileManager.default.fileExists(atPath: keptFile.path))
+        #expect(!FileManager.default.fileExists(atPath: removedFile.path))
+    }
 }

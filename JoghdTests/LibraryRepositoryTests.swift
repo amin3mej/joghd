@@ -87,4 +87,49 @@ struct LibraryRepositoryTests {
         }
         #expect(try repository.entries().isEmpty)
     }
+
+    @Test
+    func deletedEntryStaysGoneAfterReopeningRepository() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("library.json")
+        let kept = LibraryEntry(title: "Dune", format: .epub)
+        let removed = LibraryEntry(title: "Foundation", format: .pdf)
+        let repository: any LibraryRepository = FileLibraryRepository(documentURL: url)
+        try repository.add(kept)
+        try repository.add(removed)
+
+        try repository.delete(removed)
+
+        let reopened: any LibraryRepository = FileLibraryRepository(documentURL: url)
+        #expect(try reopened.entries() == [kept])
+    }
+
+    @Test
+    func deletingAbsentEntryLeavesDocumentUnchanged() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("library.json")
+        let entry = LibraryEntry(title: "Dune", format: .epub)
+        let repository: any LibraryRepository = FileLibraryRepository(documentURL: url)
+        try repository.add(entry)
+
+        try repository.delete(LibraryEntry(title: "Foundation", format: .pdf))
+
+        let reopened: any LibraryRepository = FileLibraryRepository(documentURL: url)
+        #expect(try reopened.entries() == [entry])
+    }
+
+    @Test
+    func deletingFromMissingDocumentCreatesNoDocument() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString).appendingPathComponent("library.json")
+        let repository: any LibraryRepository = FileLibraryRepository(documentURL: url)
+
+        try repository.delete(LibraryEntry(title: "Dune", format: .epub))
+
+        #expect(!FileManager.default.fileExists(atPath: url.path))
+    }
 }

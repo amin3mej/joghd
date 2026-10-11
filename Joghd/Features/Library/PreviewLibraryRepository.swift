@@ -11,4 +11,8 @@ final class PreviewLibraryRepository: LibraryRepository {
     func add(_ entry: LibraryEntry) {
         storedEntries.append(entry)
     }
+
+    func delete(_ entry: LibraryEntry) {
+        storedEntries.removeAll { $0.id == entry.id }
+    }
 }

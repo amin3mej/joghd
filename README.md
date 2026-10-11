@@ -45,6 +45,13 @@ entries. Errors from either step propagate: if saving succeeds but reloading
 fails, the entry is already persisted even though `add` throws. Callers must not
 assume an error means nothing was saved or blindly retry the addition.
 
+`LibraryStore.delete` removes the entry through the repository, reloads the
+displayed entries, and then removes the entry's stored file. If removing the
+entry fails, nothing is removed. If removing the file fails after the entry is
+gone, the entry stays removed and the error propagates; the leftover file is no
+longer reachable from the library. Deleting never destroys a stored book while
+its entry still exists.
+
 `FileLibraryRepository` assumes a single writer per document URL. Its
 read-modify-write operation runs synchronously on the main actor, but it does
 not coordinate writes across processes; concurrent writers can lose updates.

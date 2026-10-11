@@ -29,7 +29,20 @@ final class FileLibraryRepository: LibraryRepository {
     func add(_ entry: LibraryEntry) throws {
         var updated = try entries()
         updated.append(entry)
-        let data = try JSONEncoder().encode(updated)
+        try save(updated)
+    }
+
+    func delete(_ entry: LibraryEntry) throws {
+        var updated = try entries()
+        guard updated.contains(where: { $0.id == entry.id }) else {
+            return
+        }
+        updated.removeAll { $0.id == entry.id }
+        try save(updated)
+    }
+
+    private func save(_ entries: [LibraryEntry]) throws {
+        let data = try JSONEncoder().encode(entries)
         try FileManager.default.createDirectory(
             at: documentURL.deletingLastPathComponent(), withIntermediateDirectories: true
         )
