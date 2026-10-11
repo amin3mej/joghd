@@ -1,7 +1,5 @@
 import Foundation
 
-/// A book in the reader's collection, which may contain a text version, an
-/// audio version, or both. V1 imports text only.
 struct LibraryEntry: Identifiable, Hashable, Codable {
     enum TextFormat: String, Codable, Hashable, CaseIterable {
         case epub
