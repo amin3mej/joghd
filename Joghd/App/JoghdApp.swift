@@ -4,7 +4,7 @@ import SwiftUI
 struct JoghdApp: App {
     @State private var library: LibraryStore
     @State private var isImporting = false
-    @State private var isOpening = false
+    @State private var importActivity = ImportActivity()
     @State private var importError: String?
     private let importService: ImportService
 
@@ -13,7 +13,7 @@ struct JoghdApp: App {
             LibraryView(isImporting: $isImporting)
                 .environment(library)
                 .overlay {
-                    if isOpening {
+                    if importActivity.isActive {
                         ProgressView("Opening…")
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .background(.regularMaterial)
@@ -63,8 +63,9 @@ struct JoghdApp: App {
     }
 
     private func beginImport(_ url: URL) {
-        isOpening = true
+        importActivity.begin()
         Task {
+            defer { importActivity.end() }
             do {
                 let entry = try await importService.importFile(at: url)
                 try library.add(entry)
@@ -72,7 +73,6 @@ struct JoghdApp: App {
             } catch {
                 importError = error.localizedDescription
             }
-            isOpening = false
         }
     }
 }

@@ -11,7 +11,8 @@ final class TestBookFileStore: BookFileStore {
     var storedSources: [UUID: URL] = [:]
     var shouldFail = false
 
-    func store(_ source: URL, for entry: LibraryEntry) throws -> URL {
+    func store(_ source: URL, for entry: LibraryEntry) async throws -> URL {
+        await Task.yield()
         if shouldFail { throw Failure.unavailable }
         storedSources[entry.id] = source
         return source

@@ -105,7 +105,7 @@ struct ImportServiceTests {
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
 
-        await #expect(throws: ImportError.self) {
+        await #expect(throws: ImportError.unreadableFile) {
             _ = try await ImportService(fileStore: store).importFile(at: source)
         }
         #expect(store.storedSources.isEmpty)
@@ -120,7 +120,7 @@ struct ImportServiceTests {
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
 
-        await #expect(throws: ImportError.self) {
+        await #expect(throws: ImportError.unreadableFile) {
             _ = try await ImportService(fileStore: store).importFile(at: source)
         }
         #expect(store.storedSources.isEmpty)
@@ -133,7 +133,7 @@ struct ImportServiceTests {
             .appendingPathExtension("epub")
         let store = TestBookFileStore()
 
-        await #expect(throws: ImportError.self) {
+        await #expect(throws: ImportError.unreadableFile) {
             _ = try await ImportService(fileStore: store).importFile(at: source)
         }
         #expect(store.storedSources.isEmpty)

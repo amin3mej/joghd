@@ -40,7 +40,7 @@ struct ImportService {
             throw ImportError.unreadableFile
         }
 
-        _ = try fileStore.store(source, for: entry)
+        _ = try await fileStore.store(source, for: entry)
         return entry
     }
 }
