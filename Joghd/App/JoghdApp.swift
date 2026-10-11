@@ -20,6 +20,7 @@ struct JoghdApp: App {
                 .sheet(item: $draft) { pending in
                     ImportConfirmationView(draft: pending, onConfirm: confirmImport)
                 }
+                .onOpenURL { handleSelection(.success($0)) }
                 .alert("Import failed", isPresented: isShowingImportError) {
                     Button("OK", role: .cancel) {
                         importError = nil
