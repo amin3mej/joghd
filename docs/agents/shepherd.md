@@ -15,13 +15,14 @@ PR URL from your earlier comment and check it with
 `gh pr view <url> --json state,mergedAt,mergeStateStatus,headRefName`:
 
 - **merged** (`state` is `MERGED`) → `save_issue` state `"Done"`; comment
-  `Merged: <url>`; remove the PR's worktree (`git worktree remove <path>`).
-  After removal succeeds, delete the PR's local branch with
-  `git branch -D -- "<headRefName>"`, using the exact `headRefName` from the PR,
-  from outside the removed worktree. Squash merges leave the branch tip outside
-  `main`'s ancestry, so `-d` refuses; `-D` is safe here because the PR is confirmed
-  `MERGED`. If the local branch is already absent, skip deletion. Leave remote
-  branches untouched.
+  `Merged: <url>`; remove the PR's worktree (`git worktree remove <path>`, adding
+  `--force` if a dispatched session left it dirty). Then, from outside the removed
+  worktree, delete the PR's local branch. Name it from the PR's `headRefName`
+  (`gh pr view <url> --json headRefName`), falling back to the worktree directory
+  name. Skip when no such local branch exists (`git show-ref --verify --quiet
+  refs/heads/<name>`); otherwise run `git branch -D -- "<name>"`. Squash merges
+  leave the branch tip outside `main`'s ancestry, so `-d` refuses, and `-D` is safe
+  because the PR is confirmed `MERGED`. Leave remote branches untouched.
 - **closed, not merged** → comment why; `addLabels ["needs-info"]`,
   `assignee null`, state `"Todo"`.
 - **still open** (checks running, awaiting review, conflict) → leave it; the
