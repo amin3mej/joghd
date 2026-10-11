@@ -29,7 +29,7 @@ struct ImportService {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let staged = directory.appendingPathComponent(source.lastPathComponent)
         do {
-            try FileManager.default.copyItem(at: source, to: staged)
+            try FileManager.default.copyItem(at: source.resolvingSymlinksInPath(), to: staged)
         } catch {
             try? FileManager.default.removeItem(at: directory)
             throw error

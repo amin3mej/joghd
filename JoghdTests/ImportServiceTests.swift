@@ -56,6 +56,35 @@ struct ImportServiceTests {
     }
 
     @Test
+    func importsSymlinkContentsIntoLibrary() async throws {
+        let target = try makeEpub(named: "Actual.epub")
+        defer { try? FileManager.default.removeItem(at: target.deletingLastPathComponent()) }
+        let sourceDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: sourceDirectory, withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: sourceDirectory) }
+        let source = sourceDirectory.appendingPathComponent("Dune.epub")
+        try FileManager.default.createSymbolicLink(at: source, withDestinationURL: target)
+        let storageDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: storageDirectory) }
+        let expectedData = try Data(contentsOf: target)
+
+        let entry = try await ImportService(
+            fileStore: FileBookFileStore(directoryURL: storageDirectory)
+        ).importFile(at: source)
+
+        let storedFile =
+            storageDirectory
+            .appendingPathComponent(entry.id.uuidString, isDirectory: true)
+            .appendingPathComponent("Dune.epub")
+        try FileManager.default.removeItem(at: target)
+        #expect(try Data(contentsOf: storedFile) == expectedData)
+    }
+
+    @Test
     func importedEntrySurvivesReopeningRepository() async throws {
         let source = try makeEpub()
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
