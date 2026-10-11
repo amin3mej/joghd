@@ -11,6 +11,10 @@ struct ImportConfirmationView: View {
             Form {
                 TextField("Title", text: $draft.title)
                 TextField("Author", text: $draft.author)
+                if let errorMessage {
+                    Text(errorMessage)
+                        .foregroundStyle(.red)
+                }
             }
             .navigationTitle("Add Book")
             .navigationBarTitleDisplayMode(.inline)
@@ -30,23 +34,7 @@ struct ImportConfirmationView: View {
                     }
                 }
             }
-            .alert("Import failed", isPresented: isShowingError) {
-                Button("OK", role: .cancel) {
-                    errorMessage = nil
-                }
-            } message: {
-                Text(errorMessage ?? "")
-            }
         }
-    }
-
-    private var isShowingError: Binding<Bool> {
-        Binding(
-            get: { errorMessage != nil },
-            set: { isShowing in
-                if !isShowing { errorMessage = nil }
-            }
-        )
     }
 
     init(draft: ImportDraft, onConfirm: @escaping (ImportDraft) -> String?) {
