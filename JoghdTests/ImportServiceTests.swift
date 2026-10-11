@@ -79,6 +79,43 @@ struct ImportServiceTests {
     }
 
     @Test
+    func revisePreservesIdentityAndTakesEditedValuesFromDraft() throws {
+        let source = try makeSourceFile(named: "Dune.epub")
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+        let service = ImportService(fileStore: TestBookFileStore())
+        var draft = try service.draft(for: source)
+        draft.title = "Dune (Revised)"
+        draft.author = "Frank Herbert"
+        let importedAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let entry = LibraryEntry(
+            title: "Dune",
+            format: .epub,
+            importedAt: importedAt
+        )
+
+        let revised = service.revise(entry, with: draft)
+
+        #expect(revised.id == entry.id)
+        #expect(revised.format == entry.format)
+        #expect(revised.importedAt == entry.importedAt)
+        #expect(revised.title == "Dune (Revised)")
+        #expect(revised.author == "Frank Herbert")
+    }
+
+    @Test
+    func reviseStoresEmptyAuthorAsNoAuthor() throws {
+        let source = try makeSourceFile(named: "Dune.epub")
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+        let service = ImportService(fileStore: TestBookFileStore())
+        let draft = try service.draft(for: source)
+        let entry = LibraryEntry(title: "Dune", author: "Frank Herbert", format: .epub)
+
+        let revised = service.revise(entry, with: draft)
+
+        #expect(revised.author == nil)
+    }
+
+    @Test
     func importedEntrySurvivesReopeningRepository() throws {
         let source = try makeSourceFile(named: "Dune.epub")
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
@@ -90,7 +127,7 @@ struct ImportServiceTests {
 
         let service = ImportService(fileStore: TestBookFileStore())
         let entry = try service.confirm(service.draft(for: source))
-        try library.add(entry)
+        try library.upsert(entry)
 
         let reopened = LibraryStore(repository: FileLibraryRepository(documentURL: documentURL))
         try reopened.reload()

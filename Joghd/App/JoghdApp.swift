@@ -68,7 +68,7 @@ struct JoghdApp: App {
         let entry: LibraryEntry
         do {
             if let pendingEntry {
-                entry = pendingEntry
+                entry = importService.revise(pendingEntry, with: draft)
             } else {
                 entry = try importService.confirm(draft)
             }
@@ -77,7 +77,7 @@ struct JoghdApp: App {
         }
 
         do {
-            try library.add(entry)
+            try library.upsert(entry)
             pendingEntry = nil
             return nil
         } catch {

@@ -19,7 +19,7 @@ struct ImportService {
     func confirm(_ draft: ImportDraft) throws -> LibraryEntry {
         let entry = LibraryEntry(
             title: draft.title,
-            author: draft.author.isEmpty ? nil : draft.author,
+            author: author(from: draft),
             format: draft.format
         )
         let isAccessing = draft.source.startAccessingSecurityScopedResource()
@@ -27,6 +27,17 @@ struct ImportService {
 
         _ = try fileStore.store(draft.source, for: entry)
         return entry
+    }
+
+    func revise(_ entry: LibraryEntry, with draft: ImportDraft) -> LibraryEntry {
+        var revised = entry
+        revised.title = draft.title
+        revised.author = author(from: draft)
+        return revised
+    }
+
+    private func author(from draft: ImportDraft) -> String? {
+        draft.author.isEmpty ? nil : draft.author
     }
 }
 

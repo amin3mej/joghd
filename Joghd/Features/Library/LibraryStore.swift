@@ -15,13 +15,8 @@ final class LibraryStore {
         entries = try repository.entries()
     }
 
-    func add(_ entry: LibraryEntry) throws {
-        let current = try repository.entries()
-        if current.contains(where: { $0.id == entry.id }) {
-            entries = current
-            return
-        }
-        try repository.add(entry)
+    func upsert(_ entry: LibraryEntry) throws {
+        try repository.upsert(entry)
         try reload()
     }
 }

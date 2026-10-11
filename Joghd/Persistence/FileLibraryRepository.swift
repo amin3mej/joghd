@@ -26,9 +26,13 @@ final class FileLibraryRepository: LibraryRepository {
         error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError
     }
 
-    func add(_ entry: LibraryEntry) throws {
+    func upsert(_ entry: LibraryEntry) throws {
         var updated = try entries()
-        updated.append(entry)
+        if let index = updated.firstIndex(where: { $0.id == entry.id }) {
+            updated[index] = entry
+        } else {
+            updated.append(entry)
+        }
         let data = try JSONEncoder().encode(updated)
         try FileManager.default.createDirectory(
             at: documentURL.deletingLastPathComponent(), withIntermediateDirectories: true

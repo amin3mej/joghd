@@ -13,9 +13,9 @@ struct LibraryStoreTests {
     }
 
     @Test
-    func addAppendsEntry() throws {
+    func upsertAppendsEntry() throws {
         let store = LibraryStore(repository: TestLibraryRepository())
-        try store.add(LibraryEntry(title: "Dune", author: "Frank Herbert", format: .epub))
+        try store.upsert(LibraryEntry(title: "Dune", author: "Frank Herbert", format: .epub))
 
         #expect(store.entries.count == 1)
         #expect(store.entries.first?.title == "Dune")
@@ -30,7 +30,7 @@ struct LibraryStoreTests {
         #expect(store.entries == [entry])
 
         let second = LibraryEntry(title: "Foundation", format: .pdf)
-        try repository.add(second)
+        try repository.upsert(second)
         try store.reload()
         #expect(store.entries == [entry, second])
     }
@@ -43,7 +43,7 @@ struct LibraryStoreTests {
         let url = directory.appendingPathComponent("library.json")
         let store = LibraryStore(repository: FileLibraryRepository(documentURL: url))
         let entry = LibraryEntry(title: "Dune", author: "Frank Herbert", format: .epub)
-        try store.add(entry)
+        try store.upsert(entry)
 
         let relaunched = LibraryStore(repository: FileLibraryRepository(documentURL: url))
         try relaunched.reload()
@@ -51,14 +51,14 @@ struct LibraryStoreTests {
     }
 
     @Test
-    func failedAdditionLeavesDisplayedAndSavedEntriesUnchanged() throws {
+    func failedUpsertLeavesDisplayedAndSavedEntriesUnchanged() throws {
         let entry = LibraryEntry(title: "Dune", format: .epub)
         let repository = TestLibraryRepository(savedEntries: [entry])
         let store = LibraryStore(repository: repository)
         try store.reload()
         repository.shouldFail = true
         #expect(throws: (any Error).self) {
-            try store.add(LibraryEntry(title: "Foundation", format: .pdf))
+            try store.upsert(LibraryEntry(title: "Foundation", format: .pdf))
         }
         #expect(store.entries == [entry])
         repository.shouldFail = false
@@ -66,15 +66,19 @@ struct LibraryStoreTests {
     }
 
     @Test
-    func addDoesNotDuplicatePersistedEntry() throws {
+    func upsertReplacesPersistedEntryWithSameID() throws {
         let entry = LibraryEntry(title: "Dune", format: .epub)
         let repository = TestLibraryRepository(savedEntries: [entry])
         let store = LibraryStore(repository: repository)
+        try store.reload()
 
-        try store.add(entry)
+        var revised = entry
+        revised.title = "Dune (Revised)"
+        revised.author = "Frank Herbert"
+        try store.upsert(revised)
 
-        #expect(store.entries == [entry])
-        #expect(try repository.entries() == [entry])
+        #expect(store.entries == [revised])
+        #expect(try repository.entries() == [revised])
     }
 
     @Test
