@@ -24,8 +24,7 @@ struct LibraryView: View {
                 }
             }
             .navigationTitle("Library")
-            .task { reload() }
-            .onChange(of: scenePhase) { _, phase in
+            .onChange(of: scenePhase, initial: true) { _, phase in
                 if phase == .active { reload() }
             }
             .toolbar {

@@ -65,7 +65,7 @@ struct LibraryRepositoryTests {
         #expect(throws: (any Error).self) { try repository.entries() }
     }
 
-    @Test
+    @Test(.enabled(if: geteuid() != 0))
     func unwritableDestinationReportsFailure() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
