@@ -26,4 +26,17 @@ final class FileBookFileStore: BookFileStore {
             return destination
         }.value
     }
+
+    func remove(for entry: LibraryEntry) throws {
+        let entryDirectory = entryDirectory(for: entry)
+        guard FileManager.default.fileExists(atPath: entryDirectory.path) else {
+            return
+        }
+        try FileManager.default.removeItem(at: entryDirectory)
+    }
+
+    private func entryDirectory(for entry: LibraryEntry) -> URL {
+        directoryURL
+            .appendingPathComponent(entry.id.uuidString, isDirectory: true)
+    }
 }

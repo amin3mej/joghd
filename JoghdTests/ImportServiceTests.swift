@@ -183,13 +183,19 @@ struct ImportServiceTests {
             .appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let documentURL = directory.appendingPathComponent("library.json")
-        let library = LibraryStore(repository: FileLibraryRepository(documentURL: documentURL))
+        let library = LibraryStore(
+            repository: FileLibraryRepository(documentURL: documentURL),
+            fileStore: TestBookFileStore()
+        )
 
         let service = ImportService(fileStore: TestBookFileStore())
         let entry = try await service.confirm(service.draft(for: source))
         try library.upsert(entry)
 
-        let reopened = LibraryStore(repository: FileLibraryRepository(documentURL: documentURL))
+        let reopened = LibraryStore(
+            repository: FileLibraryRepository(documentURL: documentURL),
+            fileStore: TestBookFileStore()
+        )
         try reopened.reload()
         #expect(reopened.entries == [entry])
     }

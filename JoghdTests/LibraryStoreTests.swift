@@ -7,14 +7,20 @@ import Testing
 struct LibraryStoreTests {
     @Test
     func startsEmpty() throws {
-        let store = LibraryStore(repository: TestLibraryRepository())
+        let store = LibraryStore(
+            repository: TestLibraryRepository(),
+            fileStore: TestBookFileStore()
+        )
         try store.reload()
         #expect(store.entries.isEmpty)
     }
 
     @Test
     func upsertAppendsEntry() throws {
-        let store = LibraryStore(repository: TestLibraryRepository())
+        let store = LibraryStore(
+            repository: TestLibraryRepository(),
+            fileStore: TestBookFileStore()
+        )
         try store.upsert(LibraryEntry(title: "Dune", author: "Frank Herbert", format: .epub))
 
         #expect(store.entries.count == 1)
@@ -25,7 +31,7 @@ struct LibraryStoreTests {
     func reloadListsEntriesFromRepository() throws {
         let entry = LibraryEntry(title: "Dune", format: .epub)
         let repository = TestLibraryRepository(savedEntries: [entry])
-        let store = LibraryStore(repository: repository)
+        let store = LibraryStore(repository: repository, fileStore: TestBookFileStore())
         try store.reload()
         #expect(store.entries == [entry])
 
@@ -41,11 +47,17 @@ struct LibraryStoreTests {
             .appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("library.json")
-        let store = LibraryStore(repository: FileLibraryRepository(documentURL: url))
+        let store = LibraryStore(
+            repository: FileLibraryRepository(documentURL: url),
+            fileStore: TestBookFileStore()
+        )
         let entry = LibraryEntry(title: "Dune", author: "Frank Herbert", format: .epub)
         try store.upsert(entry)
 
-        let relaunched = LibraryStore(repository: FileLibraryRepository(documentURL: url))
+        let relaunched = LibraryStore(
+            repository: FileLibraryRepository(documentURL: url),
+            fileStore: TestBookFileStore()
+        )
         try relaunched.reload()
         #expect(relaunched.entries == [entry])
     }
@@ -54,7 +66,7 @@ struct LibraryStoreTests {
     func failedUpsertLeavesDisplayedAndSavedEntriesUnchanged() throws {
         let entry = LibraryEntry(title: "Dune", format: .epub)
         let repository = TestLibraryRepository(savedEntries: [entry])
-        let store = LibraryStore(repository: repository)
+        let store = LibraryStore(repository: repository, fileStore: TestBookFileStore())
         try store.reload()
         repository.shouldFail = true
         #expect(throws: (any Error).self) {
@@ -69,7 +81,7 @@ struct LibraryStoreTests {
     func upsertReplacesPersistedEntryWithSameID() throws {
         let entry = LibraryEntry(title: "Dune", format: .epub)
         let repository = TestLibraryRepository(savedEntries: [entry])
-        let store = LibraryStore(repository: repository)
+        let store = LibraryStore(repository: repository, fileStore: TestBookFileStore())
         try store.reload()
 
         var revised = entry
@@ -85,10 +97,90 @@ struct LibraryStoreTests {
     func failedReloadReportsErrorAndPreservesDisplayedEntries() throws {
         let entry = LibraryEntry(title: "Dune", format: .epub)
         let repository = TestLibraryRepository(savedEntries: [entry])
-        let store = LibraryStore(repository: repository)
+        let store = LibraryStore(repository: repository, fileStore: TestBookFileStore())
         try store.reload()
         repository.shouldFail = true
         #expect(throws: (any Error).self) { try store.reload() }
         #expect(store.entries == [entry])
+    }
+
+    @Test
+    func deleteRemovesEntryFromDisplayedEntriesAndRepository() throws {
+        let entry = LibraryEntry(title: "Dune", format: .epub)
+        let repository = TestLibraryRepository(savedEntries: [entry])
+        let fileStore = TestBookFileStore()
+        let store = LibraryStore(repository: repository, fileStore: fileStore)
+        try store.reload()
+
+        try store.delete(entry)
+
+        #expect(store.entries.isEmpty)
+        #expect(try repository.entries().isEmpty)
+        #expect(fileStore.removedEntries == [entry.id])
+    }
+
+    @Test
+    func deletionSurvivesNewStore() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let documentURL = directory.appendingPathComponent("library.json")
+        let booksDirectory = directory.appendingPathComponent("Books", isDirectory: true)
+        let fileStore = FileBookFileStore(directoryURL: booksDirectory)
+        let entry = LibraryEntry(title: "Dune", format: .epub)
+        let store = LibraryStore(
+            repository: FileLibraryRepository(documentURL: documentURL),
+            fileStore: fileStore
+        )
+        try store.upsert(entry)
+        let source = directory.appendingPathComponent("Dune.epub")
+        try Data("book".utf8).write(to: source)
+        let storedFile = try await fileStore.store(source, for: entry)
+
+        try store.delete(entry)
+
+        let relaunched = LibraryStore(
+            repository: FileLibraryRepository(documentURL: documentURL),
+            fileStore: fileStore
+        )
+        try relaunched.reload()
+        #expect(relaunched.entries.isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: storedFile.path))
+    }
+
+    @Test
+    func failedEntryDeletionLeavesEntryAndFileIntact() throws {
+        let entry = LibraryEntry(title: "Dune", format: .epub)
+        let repository = TestLibraryRepository(savedEntries: [entry])
+        let fileStore = TestBookFileStore()
+        let store = LibraryStore(repository: repository, fileStore: fileStore)
+        try store.reload()
+        repository.shouldFail = true
+
+        #expect(throws: (any Error).self) {
+            try store.delete(entry)
+        }
+
+        #expect(store.entries == [entry])
+        repository.shouldFail = false
+        #expect(try repository.entries() == [entry])
+        #expect(fileStore.removedEntries.isEmpty)
+    }
+
+    @Test
+    func failedFileRemovalStillRemovesEntry() throws {
+        let entry = LibraryEntry(title: "Dune", format: .epub)
+        let repository = TestLibraryRepository(savedEntries: [entry])
+        let fileStore = TestBookFileStore()
+        fileStore.shouldFail = true
+        let store = LibraryStore(repository: repository, fileStore: fileStore)
+        try store.reload()
+
+        #expect(throws: (any Error).self) {
+            try store.delete(entry)
+        }
+
+        #expect(store.entries.isEmpty)
+        #expect(try repository.entries().isEmpty)
     }
 }

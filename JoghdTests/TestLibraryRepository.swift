@@ -26,4 +26,9 @@ final class TestLibraryRepository: LibraryRepository {
             savedEntries.append(entry)
         }
     }
+
+    func delete(_ entry: LibraryEntry) throws {
+        if shouldFail { throw Failure.unavailable }
+        savedEntries.removeAll { $0.id == entry.id }
+    }
 }
