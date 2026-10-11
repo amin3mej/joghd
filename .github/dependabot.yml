@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # Keep GitHub Actions pinned to their latest commit SHAs. One grouped PR a
+  # week rolls every action bump together, so pins stay fresh without a noisy
+  # stream of per-action pull requests.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"
