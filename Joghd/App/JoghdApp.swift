@@ -4,6 +4,8 @@ import SwiftUI
 struct JoghdApp: App {
     @State private var library: LibraryStore
     @State private var isImporting = false
+    @State private var draft: ImportDraft?
+    @State private var pendingEntry: LibraryEntry?
     @State private var importActivity = ImportActivity()
     @State private var importError: String?
     private let importService: ImportService
@@ -25,6 +27,9 @@ struct JoghdApp: App {
                     allowedContentTypes: ImportFileTypes.allowed,
                     onCompletion: handleSelection
                 )
+                .sheet(item: $draft) { pending in
+                    ImportConfirmationView(draft: pending, onConfirm: confirmImport)
+                }
                 .onOpenURL { handleSelection(.success($0)) }
                 .alert("Import failed", isPresented: isShowingImportError) {
                     Button("OK", role: .cancel) {
@@ -53,7 +58,13 @@ struct JoghdApp: App {
     private func handleSelection(_ result: Result<URL, any Error>) {
         switch result {
         case .success(let url):
-            beginImport(url)
+            pendingEntry = nil
+            do {
+                draft = try importService.draft(for: url)
+                importError = nil
+            } catch {
+                importError = error.localizedDescription
+            }
 
         case .failure(let error):
             if (error as? CocoaError)?.code != .userCancelled {
@@ -62,16 +73,27 @@ struct JoghdApp: App {
         }
     }
 
-    private func beginImport(_ url: URL) {
+    private func confirmImport(_ draft: ImportDraft) async -> String? {
         importActivity.begin()
-        Task {
-            defer { importActivity.end() }
-            do {
-                let entry = try await importService.importFile(at: url)
-                try library.add(entry)
-            } catch {
-                importError = error.localizedDescription
+        defer { importActivity.end() }
+        let entry: LibraryEntry
+        do {
+            if let pendingEntry {
+                entry = importService.revise(pendingEntry, with: draft)
+            } else {
+                entry = try await importService.confirm(draft)
             }
+        } catch {
+            return error.localizedDescription
+        }
+
+        do {
+            try library.upsert(entry)
+            pendingEntry = nil
+            return nil
+        } catch {
+            pendingEntry = entry
+            return error.localizedDescription
         }
     }
 }

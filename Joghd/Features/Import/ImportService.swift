@@ -37,19 +37,27 @@ struct ImportService {
         return staged
     }
 
-    func importFile(at source: URL) async throws -> LibraryEntry {
-        let format = try LibraryEntry.TextFormat(sourceURL: source)
-        let entry = LibraryEntry(
-            title: source.deletingPathExtension().lastPathComponent,
-            format: format
+    func draft(for source: URL) throws -> ImportDraft {
+        ImportDraft(
+            source: source,
+            format: try LibraryEntry.TextFormat(sourceURL: source),
+            title: source.deletingPathExtension().lastPathComponent
         )
-        let isAccessing = source.startAccessingSecurityScopedResource()
-        defer { if isAccessing { source.stopAccessingSecurityScopedResource() } }
+    }
+
+    func confirm(_ draft: ImportDraft) async throws -> LibraryEntry {
+        let entry = LibraryEntry(
+            title: draft.title,
+            author: author(from: draft),
+            format: draft.format
+        )
+        let isAccessing = draft.source.startAccessingSecurityScopedResource()
+        defer { if isAccessing { draft.source.stopAccessingSecurityScopedResource() } }
 
         let staged: URL
         do {
             staged = try await Task.detached(priority: .userInitiated) {
-                try Self.stage(source: source)
+                try Self.stage(source: draft.source)
             }.value
         } catch {
             throw ImportError.unreadableFile
@@ -58,7 +66,7 @@ struct ImportService {
 
         do {
             _ = try await Task.detached(priority: .userInitiated) {
-                try Self.openDocument(at: staged, format: format)
+                try Self.openDocument(at: staged, format: draft.format)
             }.value
         } catch {
             throw ImportError.unreadableFile
@@ -66,6 +74,17 @@ struct ImportService {
 
         _ = try await fileStore.store(staged, for: entry)
         return entry
+    }
+
+    func revise(_ entry: LibraryEntry, with draft: ImportDraft) -> LibraryEntry {
+        var revised = entry
+        revised.title = draft.title
+        revised.author = author(from: draft)
+        return revised
+    }
+
+    private func author(from draft: ImportDraft) -> String? {
+        draft.author.isEmpty ? nil : draft.author
     }
 }
 

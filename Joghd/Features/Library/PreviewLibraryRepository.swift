@@ -8,7 +8,11 @@ final class PreviewLibraryRepository: LibraryRepository {
         storedEntries
     }
 
-    func add(_ entry: LibraryEntry) {
-        storedEntries.append(entry)
+    func upsert(_ entry: LibraryEntry) {
+        if let index = storedEntries.firstIndex(where: { $0.id == entry.id }) {
+            storedEntries[index] = entry
+        } else {
+            storedEntries.append(entry)
+        }
     }
 }
