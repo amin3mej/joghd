@@ -11,7 +11,8 @@ struct MarkdownBookParser {
 
         var chapters: [Chapter] = []
         var chapterTitle: String?
-        var hasChapter = false
+        var isChapterOpen = false
+        var sawTopLevelHeading = false
         var blocks: [Block] = []
         var paragraphLines: [String] = []
 
@@ -26,10 +27,10 @@ struct MarkdownBookParser {
 
         func closeChapter() {
             flushParagraph()
-            guard hasChapter || !blocks.isEmpty else { return }
+            guard isChapterOpen || !blocks.isEmpty else { return }
             chapters.append(Chapter(title: chapterTitle, blocks: blocks))
             chapterTitle = nil
-            hasChapter = false
+            isChapterOpen = false
             blocks = []
         }
 
@@ -50,8 +51,10 @@ struct MarkdownBookParser {
             } else if let heading = Self.atxHeading(line) {
                 if heading.level == 1 {
                     closeChapter()
-                    chapterTitle = heading.text.plainText
-                    hasChapter = true
+                    sawTopLevelHeading = true
+                    let title = heading.text.plainText
+                    chapterTitle = title.isEmpty ? nil : title
+                    isChapterOpen = true
                 } else {
                     flushParagraph()
                     blocks.append(.heading(level: heading.level, text: heading.text))
@@ -68,10 +71,16 @@ struct MarkdownBookParser {
                     quoteLines.append(Self.quoteContent(lines[index]))
                     index += 1
                 }
-                blocks.append(.quote(Self.inlineText(quoteLines.joined(separator: " "))))
+                let text = Self.inlineText(quoteLines.joined(separator: " "))
+                if !text.plainText.isEmpty {
+                    blocks.append(.quote(text))
+                }
             } else if let item = Self.listItem(line) {
                 flushParagraph()
-                blocks.append(.listItem(Self.inlineText(item)))
+                let text = Self.inlineText(item)
+                if !text.plainText.isEmpty {
+                    blocks.append(.listItem(text))
+                }
                 index += 1
             } else if line.trimmingCharacters(in: .whitespaces).isEmpty {
                 flushParagraph()
@@ -82,6 +91,12 @@ struct MarkdownBookParser {
             }
         }
         closeChapter()
+
+        // A document with no top-level heading is a single chapter, even when
+        // it is empty.
+        if !sawTopLevelHeading, chapters.isEmpty {
+            chapters.append(Chapter(title: nil, blocks: []))
+        }
 
         return BookDocument(
             title: frontMatter.title,
@@ -119,10 +134,15 @@ struct MarkdownBookParser {
         guard rest.isEmpty || rest.first == " " || rest.first == "\t" else { return nil }
 
         var text = rest.trimmingCharacters(in: .whitespaces)
-        while text.hasSuffix("#") {
-            text.removeLast()
+        // A closing sequence of `#` is dropped only when a space precedes it,
+        // so a title like `C#` survives.
+        let trailingHashes = text.reversed().prefix { $0 == "#" }.count
+        if trailingHashes > 0 {
+            let beforeClosing = text[text.startIndex..<text.index(text.endIndex, offsetBy: -trailingHashes)]
+            if !beforeClosing.isEmpty, beforeClosing.last?.isWhitespace == true {
+                text = String(beforeClosing).trimmingCharacters(in: .whitespaces)
+            }
         }
-        text = text.trimmingCharacters(in: .whitespaces)
         return (level, inlineText(text))
     }
 
@@ -204,6 +224,12 @@ struct MarkdownBookParser {
             return FrontMatter()
         }
 
+        // Only a block of `key: value` lines is front matter; otherwise a
+        // leading `---` is an ordinary divider.
+        guard lines[1..<closing].contains(where: { $0.contains(":") }) else {
+            return FrontMatter()
+        }
+
         var frontMatter = FrontMatter()
         for line in lines[1..<closing] {
             guard let colon = line.firstIndex(of: ":") else { continue }
@@ -231,7 +257,7 @@ struct MarkdownBookParser {
 
     // MARK: - Inline scanning
 
-    private struct Emphasis {
+    private struct EmphasisMatch {
         let isBold: Bool
         let isItalic: Bool
         let content: ArraySlice<Character>
@@ -360,7 +386,7 @@ struct MarkdownBookParser {
     }
 
     /// Recognizes a balanced emphasis marker at `index`, if one starts there.
-    private static func matchEmphasis(_ chars: [Character], at index: Int) -> Emphasis? {
+    private static func matchEmphasis(_ chars: [Character], at index: Int) -> EmphasisMatch? {
         let marker = chars[index]
         var run = 0
         while index + run < chars.count, chars[index + run] == marker, run < 3 {
@@ -392,7 +418,7 @@ struct MarkdownBookParser {
                 || closer + closerRun >= chars.count
                 || !(chars[closer + closerRun].isLetter || chars[closer + closerRun].isNumber)
             if closerRun >= length, precededByNonSpace, wordBoundary {
-                return Emphasis(
+                return EmphasisMatch(
                     isBold: length >= 2,
                     isItalic: length == 1 || length == 3,
                     content: chars[afterOpening..<closer],
