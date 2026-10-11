@@ -51,6 +51,20 @@ struct MarkdownBookParserDocumentTests {
     }
 
     @Test
+    func aFenceOfAnotherCharacterDoesNotCloseTheBlock() {
+        let document = parser.parse("```\n~~~\n```")
+
+        #expect(document.chapters[0].blocks == [.codeBlock("~~~")])
+    }
+
+    @Test
+    func aShorterFenceDoesNotCloseTheBlock() {
+        let document = parser.parse("````\n```\n````")
+
+        #expect(document.chapters[0].blocks == [.codeBlock("```")])
+    }
+
+    @Test
     func dividerBecomesADividerBlock() {
         let document = parser.parse("Text\n\n---\n\nMore")
         var expected: [Block] = []

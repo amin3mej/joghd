@@ -44,9 +44,14 @@ enum MarkdownBlockScanner {
     }
 
     private static func codeBlock(in lines: [String], at index: Int) -> Scan {
+        let opener = lines[index].trimmingCharacters(in: .whitespaces)
+        guard let marker = opener.first else {
+            return (nil, index + 1)
+        }
+        let openLength = opener.prefix { $0 == marker }.count
         var end = index + 1
         var code: [String] = []
-        while end < lines.count, codeFence(lines[end]) == nil {
+        while end < lines.count, !isClosingFence(lines[end], marker: marker, length: openLength) {
             code.append(lines[end])
             end += 1
         }
@@ -54,6 +59,15 @@ enum MarkdownBlockScanner {
             end += 1
         }
         return (.codeBlock(code.joined(separator: "\n")), end)
+    }
+
+    private static func isClosingFence(_ line: String, marker: Character, length: Int) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        let run = trimmed.prefix { $0 == marker }.count
+        guard run >= length else {
+            return false
+        }
+        return trimmed.dropFirst(run).allSatisfy(\.isWhitespace)
     }
 
     private static func quoteBlock(in lines: [String], at index: Int) -> Scan {
