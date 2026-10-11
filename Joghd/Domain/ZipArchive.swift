@@ -155,6 +155,10 @@ struct ZipArchive {
         else {
             throw BookParsingError.malformedEpub
         }
+        guard entry.method != Self.storedMethod || entry.compressedSize == entry.uncompressedSize
+        else {
+            throw BookParsingError.malformedEpub
+        }
         let offset = entry.localOffset
         guard Self.readUInt32(data, at: offset) == Self.localSignature else {
             throw BookParsingError.malformedEpub

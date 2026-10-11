@@ -31,14 +31,8 @@ enum EpubChapterScanner {
                 append(.quote(EpubInlineText.parse(children)), to: &result)
 
             case "li":
-                let nestedLists = children.filter { child in
-                    let childName = child.elementName?.lowercased()
-                    return childName == "ul" || childName == "ol"
-                }
-                let itemChildren = children.filter { child in
-                    let childName = child.elementName?.lowercased()
-                    return childName != "ul" && childName != "ol"
-                }
+                var nestedLists: [XMLTree] = []
+                let itemChildren = separatingLists(in: children, into: &nestedLists)
                 append(.listItem(EpubInlineText.parse(itemChildren)), to: &result)
                 result += blocks(in: nestedLists)
 
@@ -51,6 +45,25 @@ enum EpubChapterScanner {
             }
         }
         return result
+    }
+
+    private static func separatingLists(
+        in nodes: [XMLTree], into lists: inout [XMLTree]
+    ) -> [XMLTree] {
+        nodes.compactMap { node in
+            guard let name = node.elementName else {
+                return node
+            }
+            if name.lowercased() == "ul" || name.lowercased() == "ol" {
+                lists.append(node)
+                return nil
+            }
+            return .element(
+                name: name,
+                attributes: node.attributes,
+                children: separatingLists(in: node.childElements, into: &lists)
+            )
+        }
     }
 
     private static func append(_ block: Block, to blocks: inout [Block]) {

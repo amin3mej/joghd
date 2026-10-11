@@ -50,6 +50,25 @@ struct EpubBookParserRegressionTests {
     }
 
     @Test
+    func wrappedNestedListItemsBecomeSeparateBlocks() throws {
+        let body = "<ul><li><strong>Outer</strong><div><ol><li>Inner</li></ol></div></li></ul>"
+        let data = EpubFixture.zip {
+            ("META-INF/container.xml", EpubFixture.container)
+            (
+                "OEBPS/content.opf",
+                EpubFixture.package(manifest: [(id: "a", href: "a.xhtml")], spine: ["a"])
+            )
+            ("OEBPS/a.xhtml", EpubFixture.chapter(title: "Doc", body: body))
+        }
+        let document = try parser.parse(data)
+        var expected: [Block] = []
+        expected.append(.listItem(InlineText(runs: [InlineText.Run(text: "Outer", isBold: true)])))
+        expected.append(.listItem(InlineText("Inner")))
+
+        #expect(document.chapters[0].blocks == expected)
+    }
+
+    @Test
     func corruptArchiveEntryThrowsMalformedEpub() {
         var data = EpubFixture.zip {
             ("META-INF/container.xml", EpubFixture.container)
@@ -108,6 +127,21 @@ struct EpubBookParserRegressionTests {
         withUnsafeBytes(of: oversized.littleEndian) { bytes in
             data.replaceSubrange(sizeOffset..<(sizeOffset + 4), with: bytes)
         }
+
+        #expect(throws: BookParsingError.malformedEpub) {
+            try parser.parse(data)
+        }
+    }
+
+    @Test
+    func storedEntryWithMismatchedSizesThrowsMalformedEpub() throws {
+        var data = EpubFixture.zip {
+            ("META-INF/container.xml", EpubFixture.container)
+            ("OEBPS/content.opf", EpubFixture.package(manifest: [], spine: []))
+        }
+        let directory = try #require(data.range(of: Data([0x50, 0x4B, 0x01, 0x02])))
+        let sizeOffset = directory.lowerBound + 24
+        data.replaceSubrange(sizeOffset..<(sizeOffset + 4), with: [1, 0, 0, 0])
 
         #expect(throws: BookParsingError.malformedEpub) {
             try parser.parse(data)
