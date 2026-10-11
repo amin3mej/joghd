@@ -16,43 +16,44 @@ jobs:
     name: branch naming
     runs-on: ubuntu-latest
     env:
-      # Lowercase, matching Linear's gitBranchName (e.g. jog-13-foreman-...).
-      BRANCH_REGEX: '^[a-z]+-[0-9]+-[a-z0-9-]+$'
-      # Dependabot/renovate branches keep their own prefix.
-      EXCEPTION_REGEX: '^(dependabot|renovate)/'
+      # Lowercase JOG identifier, matching Linear's gitBranchName
+      # (e.g. jog-13-foreman-...). Anchored to the team key so a branch like
+      # "fix-1-typo" cannot pass as ticket work, and the title must be
+      # dash-separated segments (no "jog-1--x" or trailing dash).
+      BRANCH_REGEX: '^jog-[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$'
+      # Dependabot/renovate and release branches keep their own prefix.
+      EXCEPTION_REGEX: '^(dependabot|renovate|release)/'
     steps:
       - name: Check branch name
         # No checkout: github-script needs nothing from the tree.
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
-            module.exports = async ({ context, core }) => {
-              const branch = context.payload.pull_request?.head?.ref || '';
+            const branch = context.payload.pull_request?.head?.ref || '';
 
-              if (!branch) {
-                core.setFailed('Could not determine the PR head branch.');
-                return;
-              }
+            if (!branch) {
+              core.setFailed('Could not determine the PR head branch.');
+              return;
+            }
 
-              const branchRegex = process.env.BRANCH_REGEX;
-              const exceptionRegex = process.env.EXCEPTION_REGEX || '';
+            const branchRegex = process.env.BRANCH_REGEX;
+            const exceptionRegex = process.env.EXCEPTION_REGEX || '';
 
-              if (exceptionRegex && new RegExp(exceptionRegex, 'i').test(branch)) {
-                core.notice(
-                  `Branch "${branch}" matches the exception regex "${exceptionRegex}". Skipping.`,
-                );
-                return;
-              }
-
-              if (new RegExp(branchRegex).test(branch)) {
-                core.notice(`Branch "${branch}" matches "${branchRegex}".`);
-                return;
-              }
-
-              core.setFailed(
-                `Branch "${branch}" does not match the required format ` +
-                  `<identifier>-<n>-<kebab-title> (lowercase), ` +
-                  `e.g. "jog-14-enforce-branch-naming". ` +
-                  `Rename the branch and reopen the PR — GitHub cannot rename a PR branch in place.`,
+            if (exceptionRegex && new RegExp(exceptionRegex, 'i').test(branch)) {
+              core.notice(
+                `Branch "${branch}" matches the exception regex "${exceptionRegex}". Skipping.`,
               );
-            };
+              return;
+            }
+
+            if (new RegExp(branchRegex).test(branch)) {
+              core.notice(`Branch "${branch}" matches "${branchRegex}".`);
+              return;
+            }
+
+            core.setFailed(
+              `Branch "${branch}" does not match the required format ` +
+                `<identifier>-<n>-<kebab-title> (lowercase), ` +
+                `e.g. "jog-14-enforce-branch-naming". ` +
+                `Rename the branch and reopen the PR — GitHub cannot rename a PR branch in place.`,
+            );
