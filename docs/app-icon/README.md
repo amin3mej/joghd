@@ -57,9 +57,19 @@ iOS **18.4 (22E238)** / iPhone 16e.
 - Generated project and simulator build succeeded, with no icon compilation
   warnings or missing/invalid icon errors. The only build warning was the
   existing lack of an AppIntents framework dependency.
+- A separate `git archive` source-only checkout of implementation commit
+  `6d09ac7` also built successfully with a fresh derived-data directory. It had
+  no parent logo file, generated project, or build products to rely on.
 - Existing application test suite: **2 tests passed**.
 - Installed app visibly displays the Owl Phoenix instead of the placeholder
   on both current and pre–Liquid Glass Home Screens.
+- Default, Dark, Clear Light/Dark and Tinted Light/Dark were selected in the
+  installed iOS 27 Home Screen's Customize panel. The installed comparison
+  sheet uses unscaled, lossless screenshot crops; complete captures are also
+  included as high-quality JPEGs. The tint is the system picker's initial gray,
+  not a custom brand color. Clear appearances retain the wallpaper behind the
+  negative space. A temporary external XCTest driver selected these settings
+  and waited five seconds for each native icon rerender before capturing.
 - All six appearances were exported through Icon Composer at 1024 px and
   60 px. The comparison sheet below shows a 320 px overview plus each 60 px
   export at 1×. These are native renderer exports, **not installed screenshots**.
@@ -72,6 +82,13 @@ iOS **18.4 (22E238)** / iPhone 16e.
   Xcode 26.3 is CI-pinned but was not installed for local validation.
 
 ![Six native renderer appearances](evidence/appearance-comparison.png)
+
+![Six installed Home Screen appearances](evidence/installed-appearance-comparison.png)
+
+[Full default Home Screen](evidence/home-screen-ios27-default.png) ·
+[Pre–Liquid Glass fallback Home Screen](evidence/home-screen-ios18-fallback.png) ·
+[1024 px default](evidence/default-1024.png) ·
+[1024 px dark](evidence/dark-1024.png)
 
 ## Reproduce
 
