@@ -61,6 +61,30 @@ struct FileBookFileStoreTests {
     }
 
     @Test
+    func storedFileForStoredEntryReturnsTheStoredBytes() async throws {
+        let source = try makeSourceFile()
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+        let (store, directory) = makeStore()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let entry = LibraryEntry(title: "Dune", format: .epub)
+
+        _ = try await store.store(source, for: entry)
+        let resolved = try store.storedFile(for: entry)
+
+        #expect(try Data(contentsOf: resolved) == originalBytes)
+    }
+
+    @Test
+    func storedFileForAnEntryThatWasNeverStoredThrows() throws {
+        let (store, directory) = makeStore()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        #expect(throws: BookFileError.missingFile) {
+            _ = try store.storedFile(for: LibraryEntry(title: "Dune", format: .epub))
+        }
+    }
+
+    @Test
     func removingEntryDeletesItsStoredFile() async throws {
         let source = try makeSourceFile()
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }

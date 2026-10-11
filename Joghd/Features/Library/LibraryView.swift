@@ -9,18 +9,16 @@ struct LibraryView: View {
     @State private var deleteError: String?
 
     var body: some View {
-        NavigationStack {
-            deleteAlerts(libraryContent)
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    LibraryHeader {
-                        isImporting = true
-                    }
+        deleteAlerts(libraryContent)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                LibraryHeader {
+                    isImporting = true
                 }
-                .toolbar(.hidden, for: .navigationBar)
-                .onChange(of: scenePhase, initial: true) { _, phase in
-                    if phase == .active { reload() }
-                }
-        }
+            }
+            .toolbar(.hidden, for: .navigationBar)
+            .onChange(of: scenePhase, initial: true) { _, phase in
+                if phase == .active { reload() }
+            }
     }
 
     @ViewBuilder
@@ -114,11 +112,13 @@ struct LibraryView: View {
 }
 
 #Preview {
-    LibraryView(isImporting: .constant(false))
-        .environment(
-            LibraryStore(
-                repository: PreviewLibraryRepository(),
-                fileStore: PreviewBookFileStore()
-            )
+    NavigationStack {
+        LibraryView(isImporting: .constant(false))
+    }
+    .environment(
+        LibraryStore(
+            repository: PreviewLibraryRepository(),
+            fileStore: PreviewBookFileStore()
         )
+    )
 }

@@ -21,6 +21,12 @@ final class TestBookFileStore: BookFileStore {
         return source
     }
 
+    func storedFile(for entry: LibraryEntry) throws -> URL {
+        if shouldFail { throw Failure.unavailable }
+        guard let source = storedSources[entry.id] else { throw Failure.unavailable }
+        return source
+    }
+
     func remove(for entry: LibraryEntry) throws {
         if shouldFail { throw Failure.unavailable }
         removedEntries.append(entry.id)
