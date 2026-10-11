@@ -1,3 +1,6 @@
+# Everything else defaults to a maintainer's review for now.
+* @amin3mej
+
 # CI and workflow configuration: an untrusted pull request must not be able to
 # rewrite the checks, the build, or the merge process itself, so any change here
 # requires a maintainer's review.
@@ -5,13 +8,10 @@
 
 # The CI checks *run* these scripts and read these version pins, so they are part
 # of the CI surface too. Own them explicitly so the protection survives if the
-# catch-all below is ever relaxed.
+# catch-all above is ever relaxed.
 /scripts/ @amin3mej
 /.tool-versions @amin3mej
 
 # The project manifest is the source of truth for the generated Xcode project;
 # require a maintainer's review before it changes.
 /project.yml @amin3mej
-
-# Everything else defaults to a maintainer's review for now.
-* @amin3mej
