@@ -1,0 +1,53 @@
+name: Enforce branch naming
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  branch-naming:
+    name: branch naming
+    runs-on: ubuntu-latest
+    env:
+      BRANCH_REGEX: '^jog-[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$'
+      EXCEPTION_REGEX: '^(dependabot|renovate|release)/'
+    steps:
+      - name: Check branch name
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        with:
+          script: |
+            const branch = context.payload.pull_request?.head?.ref || '';
+
+            if (!branch) {
+              core.setFailed('Could not determine the PR head branch.');
+              return;
+            }
+
+            const branchRegex = process.env.BRANCH_REGEX;
+            const exceptionRegex = process.env.EXCEPTION_REGEX || '';
+
+            if (exceptionRegex && new RegExp(exceptionRegex, 'i').test(branch)) {
+              core.notice(
+                `Branch "${branch}" matches the exception regex "${exceptionRegex}". Skipping.`,
+              );
+              return;
+            }
+
+            if (new RegExp(branchRegex).test(branch)) {
+              core.notice(`Branch "${branch}" matches "${branchRegex}".`);
+              return;
+            }
+
+            core.setFailed(
+              `Branch "${branch}" does not match the required format ` +
+                `<identifier>-<n>-<kebab-title> (lowercase), ` +
+                `e.g. "jog-14-enforce-branch-naming". ` +
+                `Rename the branch and reopen the PR — GitHub cannot rename a PR branch in place.`,
+            );

@@ -36,6 +36,8 @@ you haven't claimed.
 Dispatch a fresh session in a new worktree (OpenChamber `session.create`):
 
 - `worktree`: `<issue-id>-<kebab-case-title>`
+- `branch`: `<issue-id>-<kebab-case-title>` (lowercase, matching Linear's
+  `gitBranchName`). Pass it explicitly so it matches the branch-naming check.
 - `returnResult`: true
 
 The dispatched prompt must carry the issue identifier, title, description, and
