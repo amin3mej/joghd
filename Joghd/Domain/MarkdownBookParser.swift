@@ -44,6 +44,14 @@ struct MarkdownBookParser {
         return chapters
     }
 
+    private static func markdown(contentsOf url: URL) throws -> String {
+        let data = try Data(contentsOf: url)
+        guard let markdown = String(data: data, encoding: .utf8) else {
+            throw BookParsingError.notUTF8(url)
+        }
+        return markdown
+    }
+
     func parse(_ markdown: String) -> BookDocument {
         var lines = Self.lines(of: markdown)
         let frontMatter = MarkdownFrontMatter.take(&lines)
@@ -55,10 +63,16 @@ struct MarkdownBookParser {
     }
 
     func parse(contentsOf url: URL) throws -> BookDocument {
-        let data = try Data(contentsOf: url)
-        guard let markdown = String(data: data, encoding: .utf8) else {
-            throw BookParsingError.notUTF8(url)
-        }
-        return parse(markdown)
+        parse(try Self.markdown(contentsOf: url))
+    }
+
+    func metadata(_ markdown: String) -> BookMetadata {
+        var lines = Self.lines(of: markdown)
+        let frontMatter = MarkdownFrontMatter.take(&lines)
+        return BookMetadata(title: frontMatter.title, author: frontMatter.author)
+    }
+
+    func metadata(contentsOf url: URL) throws -> BookMetadata {
+        metadata(try Self.markdown(contentsOf: url))
     }
 }

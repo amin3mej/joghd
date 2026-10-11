@@ -3,12 +3,7 @@ import Foundation
 struct EpubBookParser {
     func parse(_ data: Data) throws -> BookDocument {
         let archive = try ZipArchive(data: data)
-
-        let container = try EpubContainer.parse(try text(of: "META-INF/container.xml", in: archive))
-        let package = try EpubPackage.parse(
-            try text(of: container.packagePath, in: archive),
-            packagePath: container.packagePath
-        )
+        let package = try package(in: archive)
 
         let chapters = try package.spine.map { path in
             try EpubChapterScanner.scan(try text(of: path, in: archive))
@@ -19,6 +14,25 @@ struct EpubBookParser {
 
     func parse(contentsOf url: URL) throws -> BookDocument {
         try parse(try Data(contentsOf: url))
+    }
+
+    func metadata(_ data: Data) throws -> BookMetadata {
+        let package = try package(in: try ZipArchive(data: data))
+        return BookMetadata(title: package.title, author: package.author)
+    }
+
+    func metadata(contentsOf url: URL) throws -> BookMetadata {
+        try metadata(try Data(contentsOf: url))
+    }
+
+    private func package(in archive: ZipArchive) throws -> EpubPackage {
+        let container = try EpubContainer.parse(
+            try text(of: "META-INF/container.xml", in: archive)
+        )
+        return try EpubPackage.parse(
+            try text(of: container.packagePath, in: archive),
+            packagePath: container.packagePath
+        )
     }
 
     private func text(of path: String, in archive: ZipArchive) throws -> String {
