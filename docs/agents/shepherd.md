@@ -12,10 +12,16 @@ list_issues: team "JOG", assignee "me", state "In Review"
 
 These are tickets whose PR is open with auto-merge enabled. For each, read the
 PR URL from your earlier comment and check it with
-`gh pr view <url> --json state,mergedAt,mergeStateStatus`:
+`gh pr view <url> --json state,mergedAt,mergeStateStatus,headRefName`:
 
-- **merged** → `save_issue` state `"Done"`; comment `Merged: <url>`; remove the
-  PR's worktree (`git worktree remove <path>`).
+- **merged** (`state` is `MERGED`) → `save_issue` state `"Done"`; comment
+  `Merged: <url>`; remove the PR's worktree (`git worktree remove <path>`).
+  After removal succeeds, delete the PR's local branch with
+  `git branch -D -- "<headRefName>"`, using the exact `headRefName` from the PR,
+  from outside the removed worktree. Squash merges leave the branch tip outside
+  `main`'s ancestry, so `-d` refuses; `-D` is safe here because the PR is confirmed
+  `MERGED`. If the local branch is already absent, skip deletion. Leave remote
+  branches untouched.
 - **closed, not merged** → comment why; `addLabels ["needs-info"]`,
   `assignee null`, state `"Todo"`.
 - **still open** (checks running, awaiting review, conflict) → leave it; the
