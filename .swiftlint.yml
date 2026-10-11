@@ -6,20 +6,16 @@ excluded:
   - DerivedData
   - Joghd.xcodeproj
 
-# Enable every opt-in rule on top of the default set, then carve out the ones
-# the project has deliberately chosen not to follow. Warnings are upgraded to
-# errors on CI (see `static.yml`, which runs `swiftlint lint --strict`).
 opt_in_rules:
   - all
 
 disabled_rules:
-  # UI and declaration style the project deliberately does not adopt.
-  - attributes # Keep @Environment/@State on the declaration line.
-  - contrasted_opening_brace # K&R braces, the idiomatic Swift style.
-  - explicit_acl # Access control is inferred by default.
-  - explicit_top_level_acl # See explicit_acl.
-  - explicit_type_interface # Type inference is idiomatic Swift.
-  - explicit_enum_raw_value # Raw values are inferred from case names.
-  - discouraged_default_parameter # Default parameter values are fine in domain types.
-  - function_default_parameter_at_end # Defaulted `id` leads the LibraryEntry initializer.
-  - required_deinit # No explicit deinit needed yet.
+  - attributes
+  - contrasted_opening_brace
+  - explicit_acl
+  - explicit_top_level_acl
+  - explicit_type_interface
+  - explicit_enum_raw_value
+  - discouraged_default_parameter
+  - function_default_parameter_at_end
+  - required_deinit
