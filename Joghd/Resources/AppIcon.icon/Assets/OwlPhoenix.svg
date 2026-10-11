@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="none">
+  <title>Owl Phoenix</title>
+  <desc>Abstract owl face formed by two sweeping curves and a central flame.</desc>
+  <g fill="#17191D" transform="translate(102.08 175.04) scale(0.96)">
+    <path id="left-face" d="M53 102 C37 184 69 261 152 306 C92 353 91 435 127 491 C187 593 294 587 361 612 C383 620 397 632 405 648 C402 598 380 567 337 541 C300 519 262 508 231 484 C199 460 183 419 188 384 C194 342 222 320 252 325 C327 335 391 402 412 487 C423 325 359 253 259 227 C179 204 78 201 53 102 Z" />
+    <use id="right-face" href="#left-face" transform="translate(854 0) scale(-1 1)" />
+    <path id="flame" d="M434 54 C438 122 370 150 371 203 C370 257 408 278 427 357 C433 305 444 275 464 241 C504 176 478 109 434 54 Z" />
+  </g>
+</svg>

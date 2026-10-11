@@ -5,7 +5,7 @@ See the project's product plan and glossary in [`../docs`](../docs).
 
 ## Prerequisites
 
-- Xcode 16 or later (for the app build; iOS 17 deployment target).
+- Xcode 26 or later (Icon Composer compilation; iOS 17 deployment target).
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`.
 
 The `.xcodeproj` is **generated** and not committed. `project.yml` is the source
@@ -37,6 +37,11 @@ ios/
 ```
 
 Bundle identifier: `dev.djawadi.joghd.ios`. Scheme: `Joghd`.
+
+The editable Liquid Glass icon is `Joghd/Resources/AppIcon.icon`; XcodeGen
+includes it in the app target using the existing `AppIcon` setting. See
+[`docs/app-icon/README.md`](docs/app-icon/README.md) for sources, fallback,
+appearance checks, and reproduction steps.
 
 ## License
 
