@@ -1,15 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Import-layer rule: the domain layer must not depend on UI frameworks. The
-# domain types (see ../GLOSSARY.md) are plain Swift; they may import Foundation
-# and other non-UI frameworks only. Importing SwiftUI, UIKit, or AppKit here
-# would leak presentation concerns into the domain.
-#
-# Usage: scripts/check-import-layer.sh [domain-dir]
-# Exits non-zero if any Swift file under the domain directory imports a UI
-# framework, printing the offending lines.
-
 domain_dir="${1:-Joghd/Domain}"
 
 if [[ ! -d "$domain_dir" ]]; then
@@ -19,7 +10,7 @@ fi
 
 matches="$(
   grep -rnE \
-    '^import[[:space:]]+(SwiftUI|UIKit|AppKit)\b' \
+    '^[[:space:]]*import[[:space:]]+(SwiftUI|UIKit|AppKit)\b' \
     --include='*.swift' \
     "$domain_dir" || true
 )"
