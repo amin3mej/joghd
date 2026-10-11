@@ -5,8 +5,8 @@ enum EpubChapterScanner {
         let tree = try XMLTreeBuilder.parse(xhtml)
         let title = tree.firstElement(named: "title")?.textContent
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        let blocks = tree.firstElement(named: "body").map { blocks(in: $0.childElements) } ?? []
-        return Chapter(title: title?.isEmpty == true ? nil : title, blocks: blocks)
+        let bodyBlocks = tree.firstElement(named: "body").map { blocks(in: $0.childElements) } ?? []
+        return Chapter(title: title?.isEmpty == true ? nil : title, blocks: bodyBlocks)
     }
 
     private static func blocks(in nodes: [XMLTree]) -> [Block] {
