@@ -1,3 +1,4 @@
+import Compression
 import Foundation
 
 enum EpubFixture {
@@ -16,6 +17,9 @@ enum EpubFixture {
         static let endSignature: UInt32 = 0x0605_4B50
         static let version: UInt16 = 20
         static let storedMethod: UInt16 = 0
+        static let deflatedMethod: UInt16 = 8
+        static let compressionBufferMultiplier = 2
+        static let compressionBufferPadding = 64
     }
 
     private enum CRC32 {
@@ -109,42 +113,44 @@ enum EpubFixture {
         return lines.joined(separator: "\n")
     }
 
-    static func zip(@Builder _ build: () -> [(String, String)]) -> Data {
-        write(build())
+    static func zip(deflated: Bool = false, @Builder _ build: () -> [(String, String)]) -> Data {
+        write(build(), deflated: deflated)
     }
 
-    private static func write(_ entries: [(String, String)]) -> Data {
+    private static func write(_ entries: [(String, String)], deflated: Bool) -> Data {
         var output = Data()
         var directory = Data()
         for (path, contents) in entries {
             let name = Data(path.utf8)
             let file = Data(contents.utf8)
+            let payload = deflated ? deflate(file) : file
+            let method = deflated ? Format.deflatedMethod : Format.storedMethod
             let checksum = CRC32.compute(file)
             let offset = UInt32(output.count)
 
             append(Format.localSignature, to: &output)
             append(Format.version, to: &output)
             append(UInt16(0), to: &output)
-            append(Format.storedMethod, to: &output)
+            append(method, to: &output)
             append(UInt16(0), to: &output)
             append(UInt16(0), to: &output)
             append(checksum, to: &output)
-            append(UInt32(file.count), to: &output)
+            append(UInt32(payload.count), to: &output)
             append(UInt32(file.count), to: &output)
             append(UInt16(name.count), to: &output)
             append(UInt16(0), to: &output)
             output.append(name)
-            output.append(file)
+            output.append(payload)
 
             append(Format.directorySignature, to: &directory)
             append(Format.version, to: &directory)
             append(Format.version, to: &directory)
             append(UInt16(0), to: &directory)
-            append(Format.storedMethod, to: &directory)
+            append(method, to: &directory)
             append(UInt16(0), to: &directory)
             append(UInt16(0), to: &directory)
             append(checksum, to: &directory)
-            append(UInt32(file.count), to: &directory)
+            append(UInt32(payload.count), to: &directory)
             append(UInt32(file.count), to: &directory)
             append(UInt16(name.count), to: &directory)
             append(UInt16(0), to: &directory)
@@ -158,15 +164,53 @@ enum EpubFixture {
 
         let directoryOffset = UInt32(output.count)
         output.append(directory)
+        appendEndOfDirectory(
+            count: UInt16(entries.count),
+            size: UInt32(directory.count),
+            offset: directoryOffset,
+            to: &output
+        )
+        return output
+    }
+
+    private static func appendEndOfDirectory(
+        count: UInt16, size: UInt32, offset: UInt32, to output: inout Data
+    ) {
         append(Format.endSignature, to: &output)
         append(UInt16(0), to: &output)
         append(UInt16(0), to: &output)
-        append(UInt16(entries.count), to: &output)
-        append(UInt16(entries.count), to: &output)
-        append(UInt32(directory.count), to: &output)
-        append(directoryOffset, to: &output)
+        append(count, to: &output)
+        append(count, to: &output)
+        append(size, to: &output)
+        append(offset, to: &output)
         append(UInt16(0), to: &output)
-        return output
+    }
+
+    private static func deflate(_ source: Data) -> Data {
+        var output = Data(
+            count: source.count * Format.compressionBufferMultiplier
+                + Format.compressionBufferPadding
+        )
+        let capacity = output.count
+        let written = output.withUnsafeMutableBytes { destination in
+            source.withUnsafeBytes { input in
+                guard let destinationBytes = destination.bindMemory(to: UInt8.self).baseAddress,
+                    let inputBytes = input.bindMemory(to: UInt8.self).baseAddress
+                else {
+                    return 0
+                }
+                return compression_encode_buffer(
+                    destinationBytes,
+                    capacity,
+                    inputBytes,
+                    source.count,
+                    nil,
+                    COMPRESSION_ZLIB
+                )
+            }
+        }
+        precondition(written > 0)
+        return output.prefix(written)
     }
 
     private static func append<T: FixedWidthInteger>(_ value: T, to data: inout Data) {

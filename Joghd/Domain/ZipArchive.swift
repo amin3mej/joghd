@@ -29,6 +29,8 @@ struct ZipArchive {
     private static let localOffsetOffset = 42
     private static let localNameLengthOffset = 26
     private static let localExtraLengthOffset = 28
+    private static let maximumCompressionRatio = 200
+    private static let maximumEntrySize = 67_108_864
 
     private let data: Data
     private let entries: [String: Entry]
@@ -140,14 +142,19 @@ struct ZipArchive {
         return output
     }
 
-    func data(for path: String) -> Data? {
+    func data(for path: String) throws -> Data? {
         guard let entry = entries[path] else {
             return nil
         }
-        return try? extract(entry)
+        return try extract(entry)
     }
 
     private func extract(_ entry: Entry) throws -> Data {
+        guard entry.uncompressedSize <= Self.maximumEntrySize,
+            entry.uncompressedSize <= entry.compressedSize * Self.maximumCompressionRatio
+        else {
+            throw BookParsingError.malformedEpub
+        }
         let offset = entry.localOffset
         guard Self.readUInt32(data, at: offset) == Self.localSignature else {
             throw BookParsingError.malformedEpub

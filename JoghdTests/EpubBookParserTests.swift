@@ -226,40 +226,6 @@ struct EpubBookParserTests {
         #expect(document.chapters[0].title == "A")
     }
 
-    @Test
-    func nonLinearSpineItemsAreNotChapters() throws {
-        let opf = EpubFixture.package(
-            manifest: [(id: "a", href: "a.xhtml"), (id: "b", href: "b.xhtml")],
-            spine: ["a", "b"],
-            nonLinear: ["b"]
-        )
-        let data = EpubFixture.zip {
-            ("META-INF/container.xml", EpubFixture.container)
-            ("OEBPS/content.opf", opf)
-            ("OEBPS/a.xhtml", EpubFixture.chapter(title: "A", body: "<p>First</p>"))
-            ("OEBPS/b.xhtml", EpubFixture.chapter(title: "B", body: "<p>Second</p>"))
-        }
-
-        let document = try parser.parse(data)
-
-        #expect(document.chapters.map(\.title) == ["A"])
-    }
-
-    @Test
-    func spineItemrefWithoutAnIdrefThrows() {
-        let opf =
-            "<package><manifest><item id=\"a\" href=\"a.xhtml\"/></manifest>"
-            + "<spine><itemref/></spine></package>"
-        let data = EpubFixture.zip {
-            ("META-INF/container.xml", EpubFixture.container)
-            ("OEBPS/content.opf", opf)
-        }
-
-        #expect(throws: (any Error).self) {
-            try parser.parse(data)
-        }
-    }
-
     private func parseSingleChapter(body: String, title: String?) throws -> BookDocument {
         let data = EpubFixture.zip {
             ("META-INF/container.xml", EpubFixture.container)

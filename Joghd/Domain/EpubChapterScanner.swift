@@ -5,7 +5,10 @@ enum EpubChapterScanner {
         let tree = try XMLTreeBuilder.parse(xhtml)
         let title = tree.firstElement(named: "title")?.textContent
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        let bodyBlocks = tree.firstElement(named: "body").map { blocks(in: $0.childElements) } ?? []
+        guard let body = tree.firstElement(named: "body") else {
+            throw BookParsingError.malformedEpub
+        }
+        let bodyBlocks = blocks(in: body.childElements)
         return Chapter(title: title?.isEmpty == true ? nil : title, blocks: bodyBlocks)
     }
 
@@ -28,7 +31,16 @@ enum EpubChapterScanner {
                 append(.quote(EpubInlineText.parse(children)), to: &result)
 
             case "li":
-                append(.listItem(EpubInlineText.parse(children)), to: &result)
+                let nestedLists = children.filter { child in
+                    let childName = child.elementName?.lowercased()
+                    return childName == "ul" || childName == "ol"
+                }
+                let itemChildren = children.filter { child in
+                    let childName = child.elementName?.lowercased()
+                    return childName != "ul" && childName != "ol"
+                }
+                append(.listItem(EpubInlineText.parse(itemChildren)), to: &result)
+                result += blocks(in: nestedLists)
 
             case "ul", "ol", "div", "section", "article", "main", "header", "footer", "nav",
                 "aside", "figure":

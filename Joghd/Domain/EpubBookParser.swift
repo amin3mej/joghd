@@ -22,7 +22,7 @@ struct EpubBookParser {
     }
 
     private func text(of path: String, in archive: ZipArchive) throws -> String {
-        guard let data = archive.data(for: path), let text = String(data: data, encoding: .utf8)
+        guard let data = try archive.data(for: path), let text = String(data: data, encoding: .utf8)
         else {
             throw BookParsingError.missingEpubEntry(path)
         }
