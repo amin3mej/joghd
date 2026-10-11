@@ -1,0 +1,30 @@
+name: Setup
+description: Prepare the Xcode toolchain and generate the project
+
+runs:
+  using: composite
+  steps:
+    - name: Select Xcode
+      shell: bash
+      run: |
+        XCODE_VERSION="$(awk '$1 == "xcode" { print $2; exit }' .tool-versions)"
+        DEVELOPER_DIR="/Applications/Xcode_${XCODE_VERSION}.app"
+        echo "Selecting ${DEVELOPER_DIR}"
+        sudo xcode-select -s "${DEVELOPER_DIR}"
+        xcodebuild -version
+
+    - name: Install XcodeGen
+      shell: bash
+      run: |
+        VERSION="$(awk '$1 == "xcodegen" { print $2; exit }' .tool-versions)"
+        SHA256="4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+        curl -fsSL -o xcodegen.zip \
+          "https://github.com/yonaskolb/XcodeGen/releases/download/${VERSION}/xcodegen.zip"
+        echo "${SHA256}  xcodegen.zip" | shasum -a 256 -c -
+        unzip -q xcodegen.zip
+        sudo bash xcodegen/install.sh
+        xcodegen --version
+
+    - name: Generate project
+      shell: bash
+      run: xcodegen generate

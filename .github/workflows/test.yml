@@ -1,0 +1,29 @@
+name: Test
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test
+    runs-on: macos-15
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Prepare
+        uses: ./.github/actions/setup
+
+      - name: Run tests
+        run: |
+          xcodebuild test \
+            -project Joghd.xcodeproj \
+            -scheme Joghd \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO
