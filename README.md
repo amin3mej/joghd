@@ -40,10 +40,13 @@ Bundle identifier: `dev.djawadi.joghd.ios`. Scheme: `Joghd`.
 
 ## Library persistence
 
-`LibraryStore.add` saves through the repository and then reloads the displayed
-entries. Errors from either step propagate: if saving succeeds but reloading
-fails, the entry is already persisted even though `add` throws. Callers must not
-assume an error means nothing was saved or blindly retry the addition.
+`LibraryStore.upsert` writes through the repository and then reloads the
+displayed entries. The repository replaces the entry with an existing ID or
+appends a new one, so re-persisting an ID updates its metadata instead of
+creating a duplicate. Errors from either step propagate — if saving succeeds but
+reloading fails, the entry is already persisted even though `upsert` throws — so
+callers must not assume an error means nothing was saved, and may retry `upsert`
+with the same entry.
 
 `LibraryStore.delete` removes the entry through the repository, reloads the
 displayed entries, and then removes the entry's stored file. If removing the

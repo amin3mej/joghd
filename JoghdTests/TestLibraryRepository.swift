@@ -18,9 +18,13 @@ final class TestLibraryRepository: LibraryRepository {
         return savedEntries
     }
 
-    func add(_ entry: LibraryEntry) throws {
+    func upsert(_ entry: LibraryEntry) throws {
         if shouldFail { throw Failure.unavailable }
-        savedEntries.append(entry)
+        if let index = savedEntries.firstIndex(where: { $0.id == entry.id }) {
+            savedEntries[index] = entry
+        } else {
+            savedEntries.append(entry)
+        }
     }
 
     func delete(_ entry: LibraryEntry) throws {

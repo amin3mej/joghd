@@ -17,8 +17,8 @@ final class LibraryStore {
         entries = try repository.entries()
     }
 
-    func add(_ entry: LibraryEntry) throws {
-        try repository.add(entry)
+    func upsert(_ entry: LibraryEntry) throws {
+        try repository.upsert(entry)
         try reload()
     }
 

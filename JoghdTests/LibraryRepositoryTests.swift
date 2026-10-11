@@ -6,7 +6,7 @@ import Testing
 @MainActor
 struct LibraryRepositoryTests {
     @Test
-    func addedEntrySurvivesReopeningRepository() throws {
+    func upsertedEntrySurvivesReopeningRepository() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -18,10 +18,28 @@ struct LibraryRepositoryTests {
             importedAt: Date(timeIntervalSince1970: 1_700_000_000)
         )
         let repository: any LibraryRepository = FileLibraryRepository(documentURL: url)
-        try repository.add(entry)
+        try repository.upsert(entry)
 
         let reopened: any LibraryRepository = FileLibraryRepository(documentURL: url)
         #expect(try reopened.entries() == [entry])
+    }
+
+    @Test
+    func upsertReplacesEntryWithSameID() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("library.json")
+        let repository: any LibraryRepository = FileLibraryRepository(documentURL: url)
+        let entry = LibraryEntry(title: "Dune", format: .epub)
+        try repository.upsert(entry)
+
+        var revised = entry
+        revised.title = "Dune (Revised)"
+        revised.author = "Frank Herbert"
+        try repository.upsert(revised)
+
+        #expect(try repository.entries() == [revised])
     }
 
     @Test
@@ -43,14 +61,14 @@ struct LibraryRepositoryTests {
         let entries = LibraryEntry.TextFormat.allCases.map { format in
             LibraryEntry(title: "Book \(format.rawValue)", format: format)
         }
-        try first.add(entries[0])
-        try second.add(entries[1])
-        try first.add(entries[2])
+        try first.upsert(entries[0])
+        try second.upsert(entries[1])
+        try first.upsert(entries[2])
         #expect(try second.entries() == entries)
     }
 
     @Test
-    func unreadableDocumentIsNotOverwrittenByAddition() throws {
+    func unreadableDocumentIsNotOverwrittenByUpsert() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -60,7 +78,7 @@ struct LibraryRepositoryTests {
         let repository: any LibraryRepository = FileLibraryRepository(documentURL: url)
         #expect(throws: (any Error).self) { try repository.entries() }
         #expect(throws: (any Error).self) {
-            try repository.add(LibraryEntry(title: "Dune", format: .epub))
+            try repository.upsert(LibraryEntry(title: "Dune", format: .epub))
         }
         #expect(throws: (any Error).self) { try repository.entries() }
     }
@@ -83,7 +101,7 @@ struct LibraryRepositoryTests {
         )
         let repository: any LibraryRepository = FileLibraryRepository(documentURL: url)
         #expect(throws: (any Error).self) {
-            try repository.add(LibraryEntry(title: "Dune", format: .epub))
+            try repository.upsert(LibraryEntry(title: "Dune", format: .epub))
         }
         #expect(try repository.entries().isEmpty)
     }
@@ -97,8 +115,8 @@ struct LibraryRepositoryTests {
         let kept = LibraryEntry(title: "Dune", format: .epub)
         let removed = LibraryEntry(title: "Foundation", format: .pdf)
         let repository: any LibraryRepository = FileLibraryRepository(documentURL: url)
-        try repository.add(kept)
-        try repository.add(removed)
+        try repository.upsert(kept)
+        try repository.upsert(removed)
 
         try repository.delete(removed)
 
@@ -114,7 +132,7 @@ struct LibraryRepositoryTests {
         let url = directory.appendingPathComponent("library.json")
         let entry = LibraryEntry(title: "Dune", format: .epub)
         let repository: any LibraryRepository = FileLibraryRepository(documentURL: url)
-        try repository.add(entry)
+        try repository.upsert(entry)
 
         try repository.delete(LibraryEntry(title: "Foundation", format: .pdf))
 
