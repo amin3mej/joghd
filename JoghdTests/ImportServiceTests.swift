@@ -14,12 +14,21 @@ struct ImportServiceTests {
         return url
     }
 
-    private func makeEpub(named name: String = "Dune.epub") throws -> URL {
+    private func makeEpub(
+        named name: String = "Dune.epub",
+        title: String? = "The Book",
+        author: String? = "The Author"
+    ) throws -> URL {
         let data = EpubFixture.zip {
             ("META-INF/container.xml", EpubFixture.container)
             (
                 "OEBPS/content.opf",
-                EpubFixture.package(manifest: [(id: "a", href: "a.xhtml")], spine: ["a"])
+                EpubFixture.package(
+                    title: title,
+                    author: author,
+                    manifest: [(id: "a", href: "a.xhtml")],
+                    spine: ["a"]
+                )
             )
             ("OEBPS/a.xhtml", EpubFixture.chapter(title: "A", body: "<p>Body</p>"))
         }
@@ -27,8 +36,36 @@ struct ImportServiceTests {
     }
 
     @Test
-    func draftDerivesTitleAndFormatFromFilename() throws {
-        let source = try makeSourceFile(named: "Dune.epub")
+    func draftPrefillsTitleAndAuthorFromEpubPackage() throws {
+        let source = try makeEpub()
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+
+        let draft = try ImportService(fileStore: TestBookFileStore()).draft(for: source)
+
+        #expect(draft.title == "The Book")
+        #expect(draft.author == "The Author")
+        #expect(draft.format == .epub)
+        #expect(draft.source == source)
+    }
+
+    @Test
+    func draftPrefillsTitleAndAuthorFromMarkdownFrontMatter() throws {
+        let source = try makeSourceFile(
+            named: "Notes.md",
+            contents: Data("---\ntitle: My Notes\nauthor: Jane Doe\n---\n\n# Chapter\n\nBody.".utf8)
+        )
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+
+        let draft = try ImportService(fileStore: TestBookFileStore()).draft(for: source)
+
+        #expect(draft.title == "My Notes")
+        #expect(draft.author == "Jane Doe")
+        #expect(draft.format == .markdown)
+    }
+
+    @Test
+    func draftFallsBackToFilenameWhenFileCarriesNeither() throws {
+        let source = try makeEpub(named: "Dune.epub", title: nil, author: nil)
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
 
         let draft = try ImportService(fileStore: TestBookFileStore()).draft(for: source)
@@ -36,7 +73,6 @@ struct ImportServiceTests {
         #expect(draft.title == "Dune")
         #expect(draft.author.isEmpty)
         #expect(draft.format == .epub)
-        #expect(draft.source == source)
     }
 
     @Test
@@ -81,7 +117,7 @@ struct ImportServiceTests {
 
     @Test
     func confirmStoresEmptyAuthorAsNoAuthor() async throws {
-        let source = try makeEpub()
+        let source = try makeEpub(author: nil)
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
         let draft = try ImportService(fileStore: store).draft(for: source)

@@ -38,10 +38,15 @@ struct ImportService {
     }
 
     func draft(for source: URL) throws -> ImportDraft {
-        ImportDraft(
+        let format = try LibraryEntry.TextFormat(sourceURL: source)
+        let isAccessing = source.startAccessingSecurityScopedResource()
+        defer { if isAccessing { source.stopAccessingSecurityScopedResource() } }
+        let document = try? Self.openDocument(at: source, format: format)
+        return ImportDraft(
             source: source,
-            format: try LibraryEntry.TextFormat(sourceURL: source),
-            title: source.deletingPathExtension().lastPathComponent
+            format: format,
+            title: document?.title ?? source.deletingPathExtension().lastPathComponent,
+            author: document?.author ?? ""
         )
     }
 
