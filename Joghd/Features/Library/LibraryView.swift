@@ -38,15 +38,6 @@ struct LibraryView: View {
         }
     }
 
-    private func reload() {
-        do {
-            try library.reload()
-            loadError = nil
-        } catch {
-            loadError = error.localizedDescription
-        }
-    }
-
     private var emptyState: some View {
         ContentUnavailableView {
             Label("No books yet", systemImage: "books.vertical")
@@ -60,15 +51,18 @@ struct LibraryView: View {
             Text(entry.title)
         }
     }
+
+    private func reload() {
+        do {
+            try library.reload()
+            loadError = nil
+        } catch {
+            loadError = error.localizedDescription
+        }
+    }
 }
 
 #Preview {
     LibraryView()
         .environment(LibraryStore(repository: PreviewLibraryRepository()))
-}
-
-@MainActor
-private struct PreviewLibraryRepository: LibraryRepository {
-    func entries() throws -> [LibraryEntry] { [] }
-    func add(_ entry: LibraryEntry) throws {}
 }

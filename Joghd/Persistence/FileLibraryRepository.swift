@@ -1,13 +1,14 @@
 import Foundation
 
-/// A single library document, replaced atomically on each successful addition.
 @MainActor
 final class FileLibraryRepository: LibraryRepository {
     private let documentURL: URL
 
-    init(documentURL: URL = URL.applicationSupportDirectory
-        .appendingPathComponent("Joghd", isDirectory: true)
-        .appendingPathComponent("library.json")) {
+    init(
+        documentURL: URL = URL.applicationSupportDirectory
+            .appendingPathComponent("Joghd", isDirectory: true)
+            .appendingPathComponent("library.json")
+    ) {
         self.documentURL = documentURL
     }
 
@@ -15,11 +16,14 @@ final class FileLibraryRepository: LibraryRepository {
         let data: Data
         do {
             data = try Data(contentsOf: documentURL)
-        } catch let error as NSError where error.domain == NSCocoaErrorDomain
-            && error.code == NSFileReadNoSuchFileError {
+        } catch let error as NSError where isMissingDocument(error) {
             return []
         }
         return try JSONDecoder().decode([LibraryEntry].self, from: data)
+    }
+
+    private func isMissingDocument(_ error: NSError) -> Bool {
+        error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError
     }
 
     func add(_ entry: LibraryEntry) throws {

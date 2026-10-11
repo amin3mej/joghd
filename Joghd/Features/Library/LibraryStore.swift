@@ -1,7 +1,6 @@
 import Foundation
 import Observation
 
-/// Observable projection of the library repository for the Library screen.
 @MainActor
 @Observable
 final class LibraryStore {

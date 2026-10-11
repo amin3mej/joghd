@@ -37,7 +37,8 @@ struct LibraryStoreTests {
 
     @Test
     func entryAddedThroughStoreSurvivesNewStore() throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("library.json")
         let store = LibraryStore(repository: FileLibraryRepository(documentURL: url))
@@ -73,26 +74,5 @@ struct LibraryStoreTests {
         repository.shouldFail = true
         #expect(throws: (any Error).self) { try store.reload() }
         #expect(store.entries == [entry])
-    }
-}
-
-@MainActor
-private final class TestLibraryRepository: LibraryRepository {
-    var savedEntries: [LibraryEntry]
-    var shouldFail = false
-    private enum Failure: Error { case unavailable }
-
-    init(savedEntries: [LibraryEntry] = []) {
-        self.savedEntries = savedEntries
-    }
-
-    func entries() throws -> [LibraryEntry] {
-        if shouldFail { throw Failure.unavailable }
-        return savedEntries
-    }
-
-    func add(_ entry: LibraryEntry) throws {
-        if shouldFail { throw Failure.unavailable }
-        savedEntries.append(entry)
     }
 }

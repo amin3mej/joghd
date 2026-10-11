@@ -7,11 +7,14 @@ import Testing
 struct LibraryRepositoryTests {
     @Test
     func addedEntrySurvivesReopeningRepository() throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("library.json")
         let entry = LibraryEntry(
-            title: "Dune", author: "Frank Herbert", format: .epub,
+            title: "Dune",
+            author: "Frank Herbert",
+            format: .epub,
             importedAt: Date(timeIntervalSince1970: 1_700_000_000)
         )
         let repository: any LibraryRepository = FileLibraryRepository(documentURL: url)
@@ -31,13 +34,14 @@ struct LibraryRepositoryTests {
 
     @Test
     func successiveAdditionsPreserveAllEntries() throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("library.json")
         let first: any LibraryRepository = FileLibraryRepository(documentURL: url)
         let second: any LibraryRepository = FileLibraryRepository(documentURL: url)
-        let entries = LibraryEntry.TextFormat.allCases.map {
-            LibraryEntry(title: "Book \($0.rawValue)", format: $0)
+        let entries = LibraryEntry.TextFormat.allCases.map { format in
+            LibraryEntry(title: "Book \(format.rawValue)", format: format)
         }
         try first.add(entries[0])
         try second.add(entries[1])
@@ -47,11 +51,11 @@ struct LibraryRepositoryTests {
 
     @Test
     func unreadableDocumentIsNotOverwrittenByAddition() throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = directory.appendingPathComponent("library.json")
-        // Simulate an existing damaged document at the storage boundary.
         try Data("not a library document".utf8).write(to: url)
         let repository: any LibraryRepository = FileLibraryRepository(documentURL: url)
         #expect(throws: (any Error).self) { try repository.entries() }
@@ -63,12 +67,24 @@ struct LibraryRepositoryTests {
 
     @Test
     func unwritableDestinationReportsFailure() throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: directory) }
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let repository: any LibraryRepository = FileLibraryRepository(documentURL: directory)
+        defer {
+            try? FileManager.default.setAttributes(
+                [.posixPermissions: 0o700], ofItemAtPath: directory.path
+            )
+            try? FileManager.default.removeItem(at: directory)
+        }
+        let url = directory.appendingPathComponent("library.json")
+        try Data("[]".utf8).write(to: url)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o500], ofItemAtPath: directory.path
+        )
+        let repository: any LibraryRepository = FileLibraryRepository(documentURL: url)
         #expect(throws: (any Error).self) {
             try repository.add(LibraryEntry(title: "Dune", format: .epub))
         }
+        #expect(try repository.entries().isEmpty)
     }
 }
