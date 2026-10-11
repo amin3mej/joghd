@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import Foundation
 
 /// A book in the reader's collection, which may contain a text version, an

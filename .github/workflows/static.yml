@@ -38,3 +38,8 @@ jobs:
 
       - name: Check import layers
         run: scripts/check-import-layer.sh
+
+      - name: Check license headers
+        run: |
+          scripts/check-license-headers.test.sh
+          scripts/check-license-headers.sh
