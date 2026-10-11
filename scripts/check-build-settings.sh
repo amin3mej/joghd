@@ -1,21 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Enforces the deliberate build settings pinned in project.yml. It reads the
-# *generated* Joghd.xcodeproj rather than project.yml, so a setting that fails
-# to reach the project is caught too. It also asserts the generated project
-# stays untracked.
-#
-# Usage:
-#   xcodebuild -project Joghd.xcodeproj -target Joghd -showBuildSettings \
-#     > settings.txt
-#   scripts/check-build-settings.sh < settings.txt
-#
-# The resolved settings arrive on stdin as `KEY = VALUE` lines. Exits non-zero
-# and prints every drifted setting if a pinned value differs.
-
-# The pinned build settings and their intended values. These are the values a
-# change to project.yml must not silently alter.
 expected_settings() {
   cat <<'EOF'
 SWIFT_VERSION 6.0
@@ -51,7 +36,6 @@ while read -r key expected; do
   fi
 done < <(expected_settings)
 
-# The generated project is an artifact; it must stay out of version control.
 if git_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
   tracked="$(git -C "$git_root" ls-files -- Joghd.xcodeproj)"
   if [[ -n "$tracked" ]]; then
