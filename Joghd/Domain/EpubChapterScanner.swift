@@ -43,30 +43,14 @@ enum EpubChapterScanner {
 
     private static func append(_ block: Block, to blocks: inout [Block]) {
         switch block {
-        case .heading(_, let text):
-            appendIfNotEmpty(text, block: block, to: &blocks)
-
-        case .listItem(let text):
-            appendIfNotEmpty(text, block: block, to: &blocks)
-
-        case .paragraph(let text):
-            appendIfNotEmpty(text, block: block, to: &blocks)
-
-        case .quote(let text):
-            appendIfNotEmpty(text, block: block, to: &blocks)
+        case .heading(_, let text), .listItem(let text), .paragraph(let text), .quote(let text):
+            guard !text.plainText.isEmpty else {
+                return
+            }
 
         case .codeBlock, .divider:
-            blocks.append(block)
+            break
         }
-    }
-
-    private static func appendIfNotEmpty(
-        _ text: InlineText,
-        block: Block,
-        to blocks: inout [Block]
-    ) {
-        if !text.plainText.isEmpty {
-            blocks.append(block)
-        }
+        blocks.append(block)
     }
 }

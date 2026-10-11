@@ -22,10 +22,14 @@ struct EpubPackage {
 
         let directory = packagePath.split(separator: "/").dropLast().joined(separator: "/")
         let order = try spineElement.childElements.compactMap { itemref -> String? in
-            guard case .element(let name, _, _) = itemref, name == "itemref",
-                let idref = itemref.attribute("idref")
-            else {
+            guard let name = itemref.elementName, name == "itemref" else {
                 return nil
+            }
+            guard itemref.attribute("linear")?.lowercased() != "no" else {
+                return nil
+            }
+            guard let idref = itemref.attribute("idref") else {
+                throw BookParsingError.malformedEpub
             }
             guard let href = hrefs[idref] else {
                 throw BookParsingError.malformedEpub

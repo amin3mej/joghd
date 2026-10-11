@@ -94,25 +94,22 @@ struct ZipArchive {
     }
 
     private static func readUInt16(_ data: Data, at offset: Int) -> UInt16 {
-        let size = MemoryLayout<UInt16>.size
-        guard offset >= 0, offset + size <= data.count else {
-            return 0
-        }
-        let value = data[offset..<(offset + size)].withUnsafeBytes { buffer in
-            buffer.loadUnaligned(as: UInt16.self)
-        }
-        return UInt16(littleEndian: value)
+        readInteger(data, at: offset)
     }
 
     private static func readUInt32(_ data: Data, at offset: Int) -> UInt32 {
-        let size = MemoryLayout<UInt32>.size
+        readInteger(data, at: offset)
+    }
+
+    private static func readInteger<T: FixedWidthInteger>(_ data: Data, at offset: Int) -> T {
+        let size = MemoryLayout<T>.size
         guard offset >= 0, offset + size <= data.count else {
             return 0
         }
         let value = data[offset..<(offset + size)].withUnsafeBytes { buffer in
-            buffer.loadUnaligned(as: UInt32.self)
+            buffer.loadUnaligned(as: T.self)
         }
-        return UInt32(littleEndian: value)
+        return T(littleEndian: value)
     }
 
     private static func inflate(_ source: Data, size: Int) -> Data? {

@@ -55,7 +55,8 @@ enum EpubFixture {
         title: String? = "The Book",
         author: String? = "The Author",
         manifest: [(id: String, href: String)],
-        spine: [String]
+        spine: [String],
+        nonLinear: [String] = []
     ) -> String {
         var lines: [String] = []
         lines.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
@@ -81,7 +82,11 @@ enum EpubFixture {
         lines.append("</manifest>")
         lines.append("<spine>")
         for idref in spine {
-            lines.append("<itemref idref=\"\(idref)\"/>")
+            if nonLinear.contains(idref) {
+                lines.append("<itemref idref=\"\(idref)\" linear=\"no\"/>")
+            } else {
+                lines.append("<itemref idref=\"\(idref)\"/>")
+            }
         }
         lines.append("</spine>")
         lines.append("</package>")
