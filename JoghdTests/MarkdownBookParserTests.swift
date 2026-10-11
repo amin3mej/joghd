@@ -302,6 +302,57 @@ struct MarkdownBookParserTests {
         #expect(document.author == "Jane Doe")
     }
 
+    @Test
+    func emptyDocumentIsASingleChapter() {
+        let document = parser.parse("")
+
+        #expect(document.chapters.count == 1)
+        #expect(document.chapters[0].title == nil)
+        #expect(document.chapters[0].blocks.isEmpty)
+    }
+
+    @Test
+    func frontMatterOnlyDocumentIsASingleChapter() {
+        let document = parser.parse("---\ntitle: The Book\n---")
+
+        #expect(document.title == "The Book")
+        #expect(document.chapters.count == 1)
+    }
+
+    @Test
+    func documentOpeningWithADividerIsNotFrontMatter() {
+        let document = parser.parse("---\nIntro\n---\n\nMore")
+
+        #expect(document.title == nil)
+        #expect(document.chapters[0].blocks == [
+            .divider,
+            .paragraph(InlineText("Intro")),
+            .divider,
+            .paragraph(InlineText("More")),
+        ])
+    }
+
+    @Test
+    func headingKeepsATrailingHashNotPrecededBySpace() {
+        let document = parser.parse("# C#")
+
+        #expect(document.chapters[0].title == "C#")
+    }
+
+    @Test
+    func headingDropsAClosingHashSequence() {
+        let document = parser.parse("# Title ###")
+
+        #expect(document.chapters[0].title == "Title")
+    }
+
+    @Test
+    func imageOnlyQuoteIsSkipped() {
+        let document = parser.parse("> ![img](x.png)")
+
+        #expect(document.chapters[0].blocks.isEmpty)
+    }
+
     // MARK: - Reading a file
 
     @Test
