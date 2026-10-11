@@ -17,3 +17,9 @@ jobs:
     uses: ./.github/workflows/test.yml
     permissions:
       contents: read
+
+  static:
+    name: static
+    uses: ./.github/workflows/static.yml
+    permissions:
+      contents: read
