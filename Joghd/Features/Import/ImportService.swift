@@ -23,6 +23,20 @@ struct ImportService {
         }
     }
 
+    nonisolated private static func stage(source: URL) throws -> URL {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let staged = directory.appendingPathComponent(source.lastPathComponent)
+        do {
+            try FileManager.default.copyItem(at: source, to: staged)
+        } catch {
+            try? FileManager.default.removeItem(at: directory)
+            throw error
+        }
+        return staged
+    }
+
     func importFile(at source: URL) async throws -> LibraryEntry {
         let format = try LibraryEntry.TextFormat(sourceURL: source)
         let entry = LibraryEntry(
@@ -32,15 +46,25 @@ struct ImportService {
         let isAccessing = source.startAccessingSecurityScopedResource()
         defer { if isAccessing { source.stopAccessingSecurityScopedResource() } }
 
+        let staged: URL
+        do {
+            staged = try await Task.detached(priority: .userInitiated) {
+                try Self.stage(source: source)
+            }.value
+        } catch {
+            throw ImportError.unreadableFile
+        }
+        defer { try? FileManager.default.removeItem(at: staged.deletingLastPathComponent()) }
+
         do {
             _ = try await Task.detached(priority: .userInitiated) {
-                try Self.openDocument(at: source, format: format)
+                try Self.openDocument(at: staged, format: format)
             }.value
         } catch {
             throw ImportError.unreadableFile
         }
 
-        _ = try await fileStore.store(source, for: entry)
+        _ = try await fileStore.store(staged, for: entry)
         return entry
     }
 }

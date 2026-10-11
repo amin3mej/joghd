@@ -34,9 +34,11 @@ struct ImportServiceTests {
 
         let entry = try await ImportService(fileStore: store).importFile(at: source)
 
+        let sourceData = try Data(contentsOf: source)
         #expect(entry.title == "Dune")
         #expect(entry.format == .epub)
-        #expect(store.storedSources[entry.id] == source)
+        #expect(store.storedSources[entry.id] != source)
+        #expect(store.storedData[entry.id] == sourceData)
     }
 
     @Test

@@ -69,7 +69,6 @@ struct JoghdApp: App {
             do {
                 let entry = try await importService.importFile(at: url)
                 try library.add(entry)
-                importError = nil
             } catch {
                 importError = error.localizedDescription
             }
