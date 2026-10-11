@@ -10,7 +10,7 @@ fi
 
 matches="$(
   grep -rnE \
-    '^[[:space:]]*(@preconcurrency[[:space:]]+)?(public[[:space:]]+)?import[[:space:]]+((typealias|struct|class|enum|protocol|let|var|func)[[:space:]]+)?(SwiftUI|UIKit|AppKit)\b' \
+    '^[[:space:]]*(@preconcurrency[[:space:]]+)?((public|package|internal|fileprivate|private)[[:space:]]+)?import[[:space:]]+((typealias|struct|class|enum|protocol|let|var|func)[[:space:]]+)?(SwiftUI|UIKit|AppKit)\b' \
     --include='*.swift' \
     "$domain_dir" || true
 )"
