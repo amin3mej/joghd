@@ -4,7 +4,8 @@ struct ImportConfirmationView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft: ImportDraft
     @State private var errorMessage: String?
-    let onConfirm: (ImportDraft) -> String?
+    @State private var isConfirming = false
+    let onConfirm: (ImportDraft) async -> String?
 
     var body: some View {
         NavigationStack {
@@ -25,20 +26,33 @@ struct ImportConfirmationView: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        if let message = onConfirm(draft) {
-                            errorMessage = message
-                        } else {
-                            dismiss()
-                        }
-                    }
+                    Button("Add", action: confirm)
+                }
+            }
+            .disabled(isConfirming)
+            .interactiveDismissDisabled(isConfirming)
+            .overlay {
+                if isConfirming {
+                    ProgressView("Opening…")
                 }
             }
         }
     }
 
-    init(draft: ImportDraft, onConfirm: @escaping (ImportDraft) -> String?) {
+    init(draft: ImportDraft, onConfirm: @escaping (ImportDraft) async -> String?) {
         _draft = State(initialValue: draft)
         self.onConfirm = onConfirm
+    }
+
+    private func confirm() {
+        isConfirming = true
+        Task {
+            defer { isConfirming = false }
+            if let message = await onConfirm(draft) {
+                errorMessage = message
+            } else {
+                dismiss()
+            }
+        }
     }
 }

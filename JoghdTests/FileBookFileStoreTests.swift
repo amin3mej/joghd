@@ -23,37 +23,39 @@ struct FileBookFileStoreTests {
     }
 
     @Test
-    func storedFileMatchesOriginalBytes() throws {
+    func storedFileMatchesOriginalBytes() async throws {
         let source = try makeSourceFile()
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let (store, directory) = makeStore()
         defer { try? FileManager.default.removeItem(at: directory) }
 
-        let stored = try store.store(source, for: LibraryEntry(title: "Dune", format: .epub))
+        let stored = try await store.store(source, for: LibraryEntry(title: "Dune", format: .epub))
 
         #expect(try Data(contentsOf: stored) == originalBytes)
     }
 
     @Test
-    func storedFileKeepsOriginalName() throws {
+    func storedFileKeepsOriginalName() async throws {
         let source = try makeSourceFile(named: "Notes.markdown")
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let (store, directory) = makeStore()
         defer { try? FileManager.default.removeItem(at: directory) }
 
-        let stored = try store.store(source, for: LibraryEntry(title: "Notes", format: .markdown))
+        let stored = try await store.store(
+            source, for: LibraryEntry(title: "Notes", format: .markdown)
+        )
 
         #expect(stored.lastPathComponent == "Notes.markdown")
     }
 
     @Test
-    func storingLeavesOriginalUnmodified() throws {
+    func storingLeavesOriginalUnmodified() async throws {
         let source = try makeSourceFile()
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let (store, directory) = makeStore()
         defer { try? FileManager.default.removeItem(at: directory) }
 
-        _ = try store.store(source, for: LibraryEntry(title: "Dune", format: .epub))
+        _ = try await store.store(source, for: LibraryEntry(title: "Dune", format: .epub))
 
         #expect(try Data(contentsOf: source) == originalBytes)
     }

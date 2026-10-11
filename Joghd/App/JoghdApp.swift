@@ -6,6 +6,7 @@ struct JoghdApp: App {
     @State private var isImporting = false
     @State private var draft: ImportDraft?
     @State private var pendingEntry: LibraryEntry?
+    @State private var importActivity = ImportActivity()
     @State private var importError: String?
     private let importService: ImportService
 
@@ -13,6 +14,14 @@ struct JoghdApp: App {
         WindowGroup {
             LibraryView(isImporting: $isImporting)
                 .environment(library)
+                .overlay {
+                    if importActivity.isActive {
+                        ProgressView("Opening…")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(.regularMaterial)
+                            .ignoresSafeArea()
+                    }
+                }
                 .fileImporter(
                     isPresented: $isImporting,
                     allowedContentTypes: ImportFileTypes.allowed,
@@ -64,13 +73,15 @@ struct JoghdApp: App {
         }
     }
 
-    private func confirmImport(_ draft: ImportDraft) -> String? {
+    private func confirmImport(_ draft: ImportDraft) async -> String? {
+        importActivity.begin()
+        defer { importActivity.end() }
         let entry: LibraryEntry
         do {
             if let pendingEntry {
                 entry = importService.revise(pendingEntry, with: draft)
             } else {
-                entry = try importService.confirm(draft)
+                entry = try await importService.confirm(draft)
             }
         } catch {
             return error.localizedDescription
