@@ -27,5 +27,5 @@ struct LibraryGridView: View {
 #Preview {
     LibraryGridView(
         entries: [LibraryEntry(title: "Dune", author: "Frank Herbert", format: .epub)]
-    ) { _ in }
+    ) { _ in () }
 }
