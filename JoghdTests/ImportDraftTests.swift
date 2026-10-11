@@ -6,11 +6,11 @@ import Testing
 @MainActor
 struct ImportDraftTests {
     @Test
-    func draftPrefillsTitleAndAuthorFromEpubPackage() throws {
+    func draftPrefillsTitleAndAuthorFromEpubPackage() async throws {
         let source = try TestFiles.epub()
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
 
-        let draft = try ImportService(fileStore: TestBookFileStore()).draft(for: source)
+        let draft = try await ImportService(fileStore: TestBookFileStore()).draft(for: source)
 
         #expect(draft.title == "The Book")
         #expect(draft.author == "The Author")
@@ -19,7 +19,7 @@ struct ImportDraftTests {
     }
 
     @Test
-    func draftPrefillsMetadataWhenChapterCannotBeRead() throws {
+    func draftPrefillsMetadataWhenChapterCannotBeRead() async throws {
         let data = EpubFixture.zip {
             ("META-INF/container.xml", EpubFixture.container)
             (
@@ -30,21 +30,21 @@ struct ImportDraftTests {
         let source = try TestFiles.source(named: "Dune.epub", contents: data)
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
 
-        let draft = try ImportService(fileStore: TestBookFileStore()).draft(for: source)
+        let draft = try await ImportService(fileStore: TestBookFileStore()).draft(for: source)
 
         #expect(draft.title == "The Book")
         #expect(draft.author == "The Author")
     }
 
     @Test
-    func draftPrefillsTitleAndAuthorFromMarkdownFrontMatter() throws {
+    func draftPrefillsTitleAndAuthorFromMarkdownFrontMatter() async throws {
         let source = try TestFiles.source(
             named: "Notes.md",
             contents: Data("---\ntitle: My Notes\nauthor: Jane Doe\n---\n\n# Chapter\n\nBody.".utf8)
         )
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
 
-        let draft = try ImportService(fileStore: TestBookFileStore()).draft(for: source)
+        let draft = try await ImportService(fileStore: TestBookFileStore()).draft(for: source)
 
         #expect(draft.title == "My Notes")
         #expect(draft.author == "Jane Doe")
@@ -52,11 +52,11 @@ struct ImportDraftTests {
     }
 
     @Test
-    func draftFallsBackToFilenameWhenFileCarriesNeither() throws {
+    func draftFallsBackToFilenameWhenFileCarriesNeither() async throws {
         let source = try TestFiles.epub(named: "Dune.epub", title: nil, author: nil)
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
 
-        let draft = try ImportService(fileStore: TestBookFileStore()).draft(for: source)
+        let draft = try await ImportService(fileStore: TestBookFileStore()).draft(for: source)
 
         #expect(draft.title == "Dune")
         #expect(draft.author.isEmpty)
@@ -64,23 +64,23 @@ struct ImportDraftTests {
     }
 
     @Test
-    func draftDerivesMarkdownTitleFromFilename() throws {
+    func draftDerivesMarkdownTitleFromFilename() async throws {
         let source = try TestFiles.source(named: "Notes.markdown")
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
 
-        let draft = try ImportService(fileStore: TestBookFileStore()).draft(for: source)
+        let draft = try await ImportService(fileStore: TestBookFileStore()).draft(for: source)
 
         #expect(draft.title == "Notes")
         #expect(draft.format == .markdown)
     }
 
     @Test
-    func draftDoesNotStoreFile() throws {
+    func draftDoesNotStoreFile() async throws {
         let source = try TestFiles.epub()
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
 
-        _ = try ImportService(fileStore: store).draft(for: source)
+        _ = try await ImportService(fileStore: store).draft(for: source)
 
         #expect(store.storedSources.isEmpty)
     }

@@ -59,11 +59,13 @@ struct JoghdApp: App {
         switch result {
         case .success(let url):
             pendingEntry = nil
-            do {
-                draft = try importService.draft(for: url)
-                importError = nil
-            } catch {
-                importError = error.localizedDescription
+            Task {
+                do {
+                    draft = try await importService.draft(for: url)
+                    importError = nil
+                } catch {
+                    importError = error.localizedDescription
+                }
             }
 
         case .failure(let error):

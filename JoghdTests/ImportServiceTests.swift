@@ -10,7 +10,7 @@ struct ImportServiceTests {
         let source = try TestFiles.epub()
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
-        var draft = try ImportService(fileStore: store).draft(for: source)
+        var draft = try await ImportService(fileStore: store).draft(for: source)
         draft.title = "Dune (Revised)"
         draft.author = "Frank Herbert"
 
@@ -28,7 +28,7 @@ struct ImportServiceTests {
         let source = try TestFiles.epub(author: nil)
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
-        let draft = try ImportService(fileStore: store).draft(for: source)
+        let draft = try await ImportService(fileStore: store).draft(for: source)
 
         let entry = try await ImportService(fileStore: store).confirm(draft)
 
@@ -43,7 +43,7 @@ struct ImportServiceTests {
         )
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
-        let draft = try ImportService(fileStore: store).draft(for: source)
+        let draft = try await ImportService(fileStore: store).draft(for: source)
 
         let entry = try await ImportService(fileStore: store).confirm(draft)
 
@@ -53,11 +53,11 @@ struct ImportServiceTests {
     }
 
     @Test
-    func revisePreservesIdentityAndTakesEditedValuesFromDraft() throws {
+    func revisePreservesIdentityAndTakesEditedValuesFromDraft() async throws {
         let source = try TestFiles.source(named: "Dune.epub")
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let service = ImportService(fileStore: TestBookFileStore())
-        var draft = try service.draft(for: source)
+        var draft = try await service.draft(for: source)
         draft.title = "Dune (Revised)"
         draft.author = "Frank Herbert"
         let importedAt = Date(timeIntervalSince1970: 1_700_000_000)
@@ -77,11 +77,11 @@ struct ImportServiceTests {
     }
 
     @Test
-    func reviseStoresEmptyAuthorAsNoAuthor() throws {
+    func reviseStoresEmptyAuthorAsNoAuthor() async throws {
         let source = try TestFiles.source(named: "Dune.epub")
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let service = ImportService(fileStore: TestBookFileStore())
-        let draft = try service.draft(for: source)
+        let draft = try await service.draft(for: source)
         let entry = LibraryEntry(title: "Dune", author: "Frank Herbert", format: .epub)
 
         let revised = service.revise(entry, with: draft)
@@ -109,7 +109,7 @@ struct ImportServiceTests {
         let service = ImportService(
             fileStore: FileBookFileStore(directoryURL: storageDirectory)
         )
-        let entry = try await service.confirm(service.draft(for: source))
+        let entry = try await service.confirm(try await service.draft(for: source))
 
         let storedFile =
             storageDirectory
@@ -130,7 +130,7 @@ struct ImportServiceTests {
         let library = LibraryStore(repository: FileLibraryRepository(documentURL: documentURL))
 
         let service = ImportService(fileStore: TestBookFileStore())
-        let entry = try await service.confirm(service.draft(for: source))
+        let entry = try await service.confirm(try await service.draft(for: source))
         try library.upsert(entry)
 
         let reopened = LibraryStore(repository: FileLibraryRepository(documentURL: documentURL))
@@ -147,19 +147,19 @@ struct ImportServiceTests {
         let service = ImportService(fileStore: store)
 
         await #expect(throws: (any Error).self) {
-            _ = try await service.confirm(service.draft(for: source))
+            _ = try await service.confirm(try await service.draft(for: source))
         }
         #expect(store.storedSources.isEmpty)
     }
 
     @Test
-    func unsupportedFileIsRejectedWithoutStoring() throws {
+    func unsupportedFileIsRejectedWithoutStoring() async throws {
         let source = try TestFiles.source(named: "Notes.pdf", contents: Data("book".utf8))
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
 
-        #expect(throws: ImportError.self) {
-            _ = try ImportService(fileStore: store).draft(for: source)
+        await #expect(throws: ImportError.self) {
+            _ = try await ImportService(fileStore: store).draft(for: source)
         }
         #expect(store.storedSources.isEmpty)
     }
@@ -175,7 +175,7 @@ struct ImportServiceTests {
 
         await #expect(throws: ImportError.unreadableFile) {
             let service = ImportService(fileStore: store)
-            _ = try await service.confirm(service.draft(for: source))
+            _ = try await service.confirm(try await service.draft(for: source))
         }
         #expect(store.storedSources.isEmpty)
     }
@@ -191,7 +191,7 @@ struct ImportServiceTests {
 
         await #expect(throws: ImportError.unreadableFile) {
             let service = ImportService(fileStore: store)
-            _ = try await service.confirm(service.draft(for: source))
+            _ = try await service.confirm(try await service.draft(for: source))
         }
         #expect(store.storedSources.isEmpty)
     }
@@ -205,7 +205,7 @@ struct ImportServiceTests {
 
         await #expect(throws: ImportError.unreadableFile) {
             let service = ImportService(fileStore: store)
-            _ = try await service.confirm(service.draft(for: source))
+            _ = try await service.confirm(try await service.draft(for: source))
         }
         #expect(store.storedSources.isEmpty)
     }

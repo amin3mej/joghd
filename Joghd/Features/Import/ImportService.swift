@@ -52,11 +52,13 @@ struct ImportService {
         }
     }
 
-    func draft(for source: URL) throws -> ImportDraft {
+    func draft(for source: URL) async throws -> ImportDraft {
         let format = try LibraryEntry.TextFormat(sourceURL: source)
         let isAccessing = source.startAccessingSecurityScopedResource()
         defer { if isAccessing { source.stopAccessingSecurityScopedResource() } }
-        let metadata = try? Self.metadata(at: source, format: format)
+        let metadata = await Task.detached(priority: .userInitiated) {
+            try? Self.metadata(at: source, format: format)
+        }.value
         return ImportDraft(
             source: source,
             format: format,
