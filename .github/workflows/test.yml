@@ -19,6 +19,15 @@ jobs:
       - name: Prepare
         uses: ./.github/actions/setup
 
+      - name: Test the build-settings check
+        run: scripts/check-build-settings.test.sh
+
+      - name: Check build settings
+        run: |
+          xcodebuild -project Joghd.xcodeproj -target Joghd -showBuildSettings \
+            > "$RUNNER_TEMP/build-settings.txt"
+          scripts/check-build-settings.sh < "$RUNNER_TEMP/build-settings.txt"
+
       - name: Run tests
         run: |
           xcodebuild test \
