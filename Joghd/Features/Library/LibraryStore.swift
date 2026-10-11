@@ -1,13 +1,22 @@
 import Foundation
 import Observation
 
-/// Owns the reader's on-device library. V1 keeps everything local; no account,
-/// server upload, or cloud processing.
+@MainActor
 @Observable
 final class LibraryStore {
     private(set) var entries: [LibraryEntry] = []
+    private let repository: any LibraryRepository
 
-    func add(_ entry: LibraryEntry) {
-        entries.append(entry)
+    init(repository: any LibraryRepository) {
+        self.repository = repository
+    }
+
+    func reload() throws {
+        entries = try repository.entries()
+    }
+
+    func add(_ entry: LibraryEntry) throws {
+        try repository.add(entry)
+        try reload()
     }
 }

@@ -38,6 +38,25 @@ ios/
 
 Bundle identifier: `dev.djawadi.joghd.ios`. Scheme: `Joghd`.
 
+## Library persistence
+
+`LibraryStore.add` saves through the repository and then reloads the displayed
+entries. Errors from either step propagate: if saving succeeds but reloading
+fails, the entry is already persisted even though `add` throws. Callers must not
+assume an error means nothing was saved or blindly retry the addition.
+
+`FileLibraryRepository` assumes a single writer per document URL. Its
+read-modify-write operation runs synchronously on the main actor, but it does
+not coordinate writes across processes; concurrent writers can lose updates.
+
+The JSON document is replaced atomically, not durably flushed. Normal app
+relaunches preserve entries, but a power loss can lose the latest replacement.
+V1 accepts this metadata durability risk; there is no existing platform
+abstraction for flushing both a temporary file and its parent directory.
+
+V1 keeps library data local. It does not use an account, server upload, or
+cloud processing.
+
 ## License
 
 MPL-2.0 (Mozilla Public License 2.0). See [`LICENSE`](LICENSE).
