@@ -1,0 +1,72 @@
+import Foundation
+
+enum EpubChapterScanner {
+    static func scan(_ xhtml: String) throws -> Chapter {
+        let tree = try XMLTreeBuilder.parse(xhtml)
+        let title = tree.firstElement(named: "title")?.textContent
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let blocks = tree.firstElement(named: "body").map { blocks(in: $0.childElements) } ?? []
+        return Chapter(title: title?.isEmpty == true ? nil : title, blocks: blocks)
+    }
+
+    private static func blocks(in nodes: [XMLTree]) -> [Block] {
+        var result: [Block] = []
+        for node in nodes {
+            guard let name = node.elementName else {
+                continue
+            }
+            let children = node.childElements
+            switch name.lowercased() {
+            case "h1", "h2", "h3", "h4", "h5", "h6":
+                let text = EpubInlineText.parse(children)
+                append(.heading(level: Int(name.dropFirst()) ?? 1, text: text), to: &result)
+
+            case "p":
+                append(.paragraph(EpubInlineText.parse(children)), to: &result)
+
+            case "blockquote":
+                append(.quote(EpubInlineText.parse(children)), to: &result)
+
+            case "li":
+                append(.listItem(EpubInlineText.parse(children)), to: &result)
+
+            case "ul", "ol", "div", "section", "article", "main", "header", "footer", "nav",
+                "aside", "figure":
+                result += blocks(in: children)
+
+            default:
+                continue
+            }
+        }
+        return result
+    }
+
+    private static func append(_ block: Block, to blocks: inout [Block]) {
+        switch block {
+        case .heading(_, let text):
+            appendIfNotEmpty(text, block: block, to: &blocks)
+
+        case .listItem(let text):
+            appendIfNotEmpty(text, block: block, to: &blocks)
+
+        case .paragraph(let text):
+            appendIfNotEmpty(text, block: block, to: &blocks)
+
+        case .quote(let text):
+            appendIfNotEmpty(text, block: block, to: &blocks)
+
+        case .codeBlock, .divider:
+            blocks.append(block)
+        }
+    }
+
+    private static func appendIfNotEmpty(
+        _ text: InlineText,
+        block: Block,
+        to blocks: inout [Block]
+    ) {
+        if !text.plainText.isEmpty {
+            blocks.append(block)
+        }
+    }
+}
