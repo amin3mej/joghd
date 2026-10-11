@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// The reader's home screen: the on-device book library.
 struct LibraryView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(\.scenePhase) private var scenePhase
+    @Binding var isImporting: Bool
     @State private var loadError: String?
 
     var body: some View {
@@ -30,7 +30,7 @@ struct LibraryView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Import", systemImage: "plus") {
-                        // V1: import EPUB, Markdown, or PDF from Files or the share sheet.
+                        isImporting = true
                     }
                 }
             }
@@ -41,7 +41,7 @@ struct LibraryView: View {
         ContentUnavailableView {
             Label("No books yet", systemImage: "books.vertical")
         } description: {
-            Text("Import an EPUB, Markdown, or PDF file to start reading.")
+            Text("Import an EPUB or Markdown file to start reading.")
         }
     }
 
@@ -62,6 +62,6 @@ struct LibraryView: View {
 }
 
 #Preview {
-    LibraryView()
+    LibraryView(isImporting: .constant(false))
         .environment(LibraryStore(repository: PreviewLibraryRepository()))
 }
