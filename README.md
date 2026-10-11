@@ -54,6 +54,9 @@ relaunches preserve entries, but a power loss can lose the latest replacement.
 V1 accepts this metadata durability risk; there is no existing platform
 abstraction for flushing both a temporary file and its parent directory.
 
+V1 keeps library data local. It does not use an account, server upload, or
+cloud processing.
+
 ## License
 
 MPL-2.0 (Mozilla Public License 2.0). See [`LICENSE`](LICENSE).
