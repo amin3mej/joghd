@@ -66,6 +66,18 @@ struct LibraryStoreTests {
     }
 
     @Test
+    func addDoesNotDuplicatePersistedEntry() throws {
+        let entry = LibraryEntry(title: "Dune", format: .epub)
+        let repository = TestLibraryRepository(savedEntries: [entry])
+        let store = LibraryStore(repository: repository)
+
+        try store.add(entry)
+
+        #expect(store.entries == [entry])
+        #expect(try repository.entries() == [entry])
+    }
+
+    @Test
     func failedReloadReportsErrorAndPreservesDisplayedEntries() throws {
         let entry = LibraryEntry(title: "Dune", format: .epub)
         let repository = TestLibraryRepository(savedEntries: [entry])

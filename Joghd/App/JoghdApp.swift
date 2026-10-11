@@ -5,6 +5,7 @@ struct JoghdApp: App {
     @State private var library: LibraryStore
     @State private var isImporting = false
     @State private var draft: ImportDraft?
+    @State private var pendingEntry: LibraryEntry?
     @State private var importError: String?
     private let importService: ImportService
 
@@ -48,6 +49,7 @@ struct JoghdApp: App {
     private func handleSelection(_ result: Result<URL, any Error>) {
         switch result {
         case .success(let url):
+            pendingEntry = nil
             do {
                 draft = try importService.draft(for: url)
                 importError = nil
@@ -63,11 +65,23 @@ struct JoghdApp: App {
     }
 
     private func confirmImport(_ draft: ImportDraft) -> String? {
+        let entry: LibraryEntry
         do {
-            let entry = try importService.confirm(draft)
+            if let pendingEntry {
+                entry = pendingEntry
+            } else {
+                entry = try importService.confirm(draft)
+            }
+        } catch {
+            return error.localizedDescription
+        }
+
+        do {
             try library.add(entry)
+            pendingEntry = nil
             return nil
         } catch {
+            pendingEntry = entry
             return error.localizedDescription
         }
     }

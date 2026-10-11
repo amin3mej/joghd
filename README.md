@@ -40,10 +40,12 @@ Bundle identifier: `dev.djawadi.joghd.ios`. Scheme: `Joghd`.
 
 ## Library persistence
 
-`LibraryStore.add` saves through the repository and then reloads the displayed
-entries. Errors from either step propagate: if saving succeeds but reloading
-fails, the entry is already persisted even though `add` throws. Callers must not
-assume an error means nothing was saved or blindly retry the addition.
+`LibraryStore.add` is idempotent: it reads the repository, adds the entry only
+when its ID is not already present, and then reloads the displayed entries.
+Errors from either step propagate — if saving succeeds but reloading fails, the
+entry is already persisted even though `add` throws — so callers must not assume
+an error means nothing was saved. A caller may retry `add` with the same entry
+without creating a duplicate.
 
 `FileLibraryRepository` assumes a single writer per document URL. Its
 read-modify-write operation runs synchronously on the main actor, but it does

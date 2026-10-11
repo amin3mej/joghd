@@ -16,6 +16,11 @@ final class LibraryStore {
     }
 
     func add(_ entry: LibraryEntry) throws {
+        let current = try repository.entries()
+        if current.contains(where: { $0.id == entry.id }) {
+            entries = current
+            return
+        }
         try repository.add(entry)
         try reload()
     }
