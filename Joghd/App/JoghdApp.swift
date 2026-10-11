@@ -16,6 +16,7 @@ struct JoghdApp: App {
                     allowedContentTypes: ImportFileTypes.allowed,
                     onCompletion: handleSelection
                 )
+                .onOpenURL { handleSelection(.success($0)) }
                 .alert("Import failed", isPresented: isShowingImportError) {
                     Button("OK", role: .cancel) {
                         importError = nil
