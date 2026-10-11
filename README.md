@@ -38,11 +38,6 @@ ios/
 
 Bundle identifier: `dev.djawadi.joghd.ios`. Scheme: `Joghd`.
 
-The editable Liquid Glass icon is `Joghd/Resources/AppIcon.icon`; XcodeGen
-includes it in the app target using the existing `AppIcon` setting. See
-[`docs/app-icon/README.md`](docs/app-icon/README.md) for sources, fallback,
-appearance checks, and reproduction steps.
-
 ## License
 
 MPL-2.0 (Mozilla Public License 2.0). See [`LICENSE`](LICENSE).

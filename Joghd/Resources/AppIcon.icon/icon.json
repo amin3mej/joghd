@@ -5,11 +5,11 @@
   ],
   "groups": [
     {
-      "name": "Owl Phoenix",
+      "name": "App Logo",
       "layers": [
         {
-          "image-name": "OwlPhoenix.svg",
-          "name": "Owl Phoenix",
+          "image-name": "AppLogo.svg",
+          "name": "App Logo",
           "fill-specializations": [
             { "appearance": "dark", "value": { "solid": "srgb:0.65882,0.67843,0.70980,1.00000" } },
             { "appearance": "tinted", "value": { "solid": "srgb:1.00000,1.00000,1.00000,1.00000" } }
