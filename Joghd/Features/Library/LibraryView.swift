@@ -20,7 +20,7 @@ struct LibraryView: View {
                 } else if library.entries.isEmpty {
                     emptyState
                 } else {
-                    list
+                    grid
                 }
             }
             .navigationTitle("Library")
@@ -45,10 +45,8 @@ struct LibraryView: View {
         }
     }
 
-    private var list: some View {
-        List(library.entries) { entry in
-            Text(entry.title)
-        }
+    private var grid: some View {
+        LibraryGridView(entries: library.entries)
     }
 
     private func reload() {
