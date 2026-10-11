@@ -15,14 +15,20 @@ PR URL from your earlier comment and check it with
 `gh pr view <url> --json state,mergedAt,mergeStateStatus,headRefName`:
 
 - **merged** (`state` is `MERGED`) → `save_issue` state `"Done"`; comment
-  `Merged: <url>`; remove the PR's worktree (`git worktree remove <path>`, adding
-  `--force` if a dispatched session left it dirty). Then, from outside the removed
-  worktree, delete the PR's local branch. Name it from the PR's `headRefName`
-  (`gh pr view <url> --json headRefName`), falling back to the worktree directory
-  name. Skip when no such local branch exists (`git show-ref --verify --quiet
-  refs/heads/<name>`); otherwise run `git branch -D -- "<name>"`. Squash merges
-  leave the branch tip outside `main`'s ancestry, so `-d` refuses, and `-D` is safe
-  because the PR is confirmed `MERGED`. Leave remote branches untouched.
+  `Merged: <url>`; remove the PR's worktree. If a dispatched session left it
+  dirty, inspect the uncommitted work (`git -C <path> status --short`) and keep
+  what's useful before removing with `--force`; if you can't preserve it, stop
+  and comment rather than delete. Then, from outside the removed worktree,
+  delete the PR's local branch. Name it from the PR's `headRefName`
+  (`gh pr view <url> --json headRefName`), falling back to the worktree
+  directory name. Skip when no such local branch exists (`git show-ref --verify
+  --quiet refs/heads/<name>`); otherwise compare the merged head
+  (`gh pr view <url> --json headRefOid --jq .headRefOid`) with the local tip
+  (`git rev-parse refs/heads/<name>`) and run `git branch -D -- "<name>"` only
+  when they match — a tip that has advanced past the merge means someone kept
+  working there, so leave it. Squash merges leave the branch tip outside
+  `main`'s ancestry, so `-d` refuses, and `-D` is safe once the tips match.
+  Leave remote branches untouched.
 - **closed, not merged** → comment why; `addLabels ["needs-info"]`,
   `assignee null`, state `"Todo"`.
 - **still open** (checks running, awaiting review, conflict) → leave it; the
