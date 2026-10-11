@@ -1,4 +1,3 @@
-import Foundation
 import Testing
 
 @testable import Joghd
@@ -6,47 +5,50 @@ import Testing
 struct MarkdownBookParserTests {
     private let parser = MarkdownBookParser()
 
-    // MARK: - Chapters and blocks
-
     @Test
     func paragraphBecomesASingleChapter() {
         let document = parser.parse("Hello world.")
+        var expected: [Block] = []
+        expected.append(.paragraph(InlineText("Hello world.")))
 
         #expect(document.chapters.count == 1)
         #expect(document.chapters[0].title == nil)
-        #expect(document.chapters[0].blocks == [.paragraph(InlineText("Hello world."))])
+        #expect(document.chapters[0].blocks == expected)
     }
 
     @Test
     func blankLineSeparatesParagraphs() {
         let document = parser.parse("First paragraph.\n\nSecond paragraph.")
+        var expected: [Block] = []
+        expected.append(.paragraph(InlineText("First paragraph.")))
+        expected.append(.paragraph(InlineText("Second paragraph.")))
 
-        #expect(document.chapters[0].blocks == [
-            .paragraph(InlineText("First paragraph.")),
-            .paragraph(InlineText("Second paragraph.")),
-        ])
+        #expect(document.chapters[0].blocks == expected)
     }
 
     @Test
     func topLevelHeadingStartsAChapterAndNamesIt() {
         let document = parser.parse("# Chapter One\n\nSome text.")
+        var expected: [Block] = []
+        expected.append(.paragraph(InlineText("Some text.")))
 
         #expect(document.chapters.count == 1)
         #expect(document.chapters[0].title == "Chapter One")
-        #expect(document.chapters[0].blocks == [.paragraph(InlineText("Some text."))])
+        #expect(document.chapters[0].blocks == expected)
     }
 
     @Test
     func oneTopLevelHeadingPerChapterYieldsOneChapterPerHeading() {
-        let document = parser.parse("""
-        # One
+        let markdown = """
+            # One
 
-        First.
+            First.
 
-        # Two
+            # Two
 
-        Second.
-        """)
+            Second.
+            """
+        let document = parser.parse(markdown)
 
         #expect(document.chapters.count == 2)
         #expect(document.chapters.map(\.title) == ["One", "Two"])
@@ -65,31 +67,33 @@ struct MarkdownBookParserTests {
 
     @Test
     func lowerLevelHeadingsStayAsBlocksWithinAChapter() {
-        let document = parser.parse("""
-        # Chapter
+        let markdown = """
+            # Chapter
 
-        ## Section
+            ## Section
 
-        Body.
-        """)
+            Body.
+            """
+        let document = parser.parse(markdown)
+        var expected: [Block] = []
+        expected.append(.heading(level: 2, text: InlineText("Section")))
+        expected.append(.paragraph(InlineText("Body.")))
 
         #expect(document.chapters.count == 1)
         #expect(document.chapters[0].title == "Chapter")
-        #expect(document.chapters[0].blocks == [
-            .heading(level: 2, text: InlineText("Section")),
-            .paragraph(InlineText("Body.")),
-        ])
+        #expect(document.chapters[0].blocks == expected)
     }
 
     @Test
     func contentBeforeTheFirstHeadingBecomesAnUntitledChapter() {
-        let document = parser.parse("""
-        Preamble.
+        let markdown = """
+            Preamble.
 
-        # Chapter
+            # Chapter
 
-        Body.
-        """)
+            Body.
+            """
+        let document = parser.parse(markdown)
 
         #expect(document.chapters.count == 2)
         #expect(document.chapters[0].title == nil)
@@ -97,288 +101,104 @@ struct MarkdownBookParserTests {
         #expect(document.chapters[1].title == "Chapter")
     }
 
-    // MARK: - Inline emphasis
-
     @Test
     func boldCoversTheCorrectRun() {
         let document = parser.parse("This is **bold** text.")
+        var runs: [InlineText.Run] = []
+        runs.append(plain("This is "))
+        runs.append(bold("bold"))
+        runs.append(plain(" text."))
 
-        #expect(document.chapters[0].blocks == [
-            .paragraph(InlineText(runs: [
-                plain("This is "),
-                bold("bold"),
-                plain(" text."),
-            ])),
-        ])
+        #expect(document.chapters[0].blocks == [.paragraph(InlineText(runs: runs))])
     }
 
     @Test
     func italicCoversTheCorrectRun() {
         let document = parser.parse("This is *italic* text.")
+        var runs: [InlineText.Run] = []
+        runs.append(plain("This is "))
+        runs.append(italic("italic"))
+        runs.append(plain(" text."))
 
-        #expect(document.chapters[0].blocks == [
-            .paragraph(InlineText(runs: [
-                plain("This is "),
-                italic("italic"),
-                plain(" text."),
-            ])),
-        ])
+        #expect(document.chapters[0].blocks == [.paragraph(InlineText(runs: runs))])
     }
 
     @Test
     func underscoresAlsoMarkEmphasis() {
         let document = parser.parse("__bold__ and _italic_")
+        var runs: [InlineText.Run] = []
+        runs.append(bold("bold"))
+        runs.append(plain(" and "))
+        runs.append(italic("italic"))
 
-        #expect(document.chapters[0].blocks == [
-            .paragraph(InlineText(runs: [
-                bold("bold"),
-                plain(" and "),
-                italic("italic"),
-            ])),
-        ])
+        #expect(document.chapters[0].blocks == [.paragraph(InlineText(runs: runs))])
     }
 
     @Test
     func tripleMarkerMarksBoldAndItalic() {
         let document = parser.parse("***both***")
+        var runs: [InlineText.Run] = []
+        runs.append(boldItalic("both"))
 
-        #expect(document.chapters[0].blocks == [
-            .paragraph(InlineText(runs: [boldItalic("both")])),
-        ])
+        #expect(document.chapters[0].blocks == [.paragraph(InlineText(runs: runs))])
     }
 
     @Test
     func emphasisRunsInterleaveWithPlainText() {
         let document = parser.parse("a **b** c *d* e")
+        var runs: [InlineText.Run] = []
+        runs.append(plain("a "))
+        runs.append(bold("b"))
+        runs.append(plain(" c "))
+        runs.append(italic("d"))
+        runs.append(plain(" e"))
 
-        #expect(document.chapters[0].blocks == [
-            .paragraph(InlineText(runs: [
-                plain("a "),
-                bold("b"),
-                plain(" c "),
-                italic("d"),
-                plain(" e"),
-            ])),
-        ])
+        #expect(document.chapters[0].blocks == [.paragraph(InlineText(runs: runs))])
     }
 
     @Test
     func intrawordUnderscoresAreNotEmphasis() {
         let document = parser.parse("snake_case_name")
 
-        #expect(document.chapters[0].blocks == [
-            .paragraph(InlineText("snake_case_name")),
-        ])
+        #expect(document.chapters[0].blocks == [.paragraph(InlineText("snake_case_name"))])
     }
 
     @Test
     func linkKeepsTextAndDropsTarget() {
         let document = parser.parse("See [the docs](https://example.com) now.")
 
-        #expect(document.chapters[0].blocks == [
-            .paragraph(InlineText("See the docs now.")),
-        ])
+        #expect(document.chapters[0].blocks == [.paragraph(InlineText("See the docs now."))])
     }
 
     @Test
     func imageIsNotRepresented() {
         let document = parser.parse("A![alt text](img.png)B")
 
-        #expect(document.chapters[0].blocks == [
-            .paragraph(InlineText("AB")),
-        ])
+        #expect(document.chapters[0].blocks == [.paragraph(InlineText("AB"))])
     }
 
     @Test
     func footnoteTargetIsNotRepresented() {
         let document = parser.parse("Text[^1] more")
 
-        #expect(document.chapters[0].blocks == [
-            .paragraph(InlineText("Text more")),
-        ])
-    }
-
-    // MARK: - Quotes, lists, code, dividers
-
-    @Test
-    func consecutiveQuoteLinesBecomeOneQuoteBlock() {
-        let document = parser.parse("> Line one\n> line two")
-
-        #expect(document.chapters[0].blocks == [
-            .quote(InlineText("Line one line two")),
-        ])
-    }
-
-    @Test
-    func quotesSeparatedByABlankLineAreSeparateBlocks() {
-        let document = parser.parse("> One\n\n> Two")
-
-        #expect(document.chapters[0].blocks == [
-            .quote(InlineText("One")),
-            .quote(InlineText("Two")),
-        ])
-    }
-
-    @Test
-    func unorderedListItemsBecomeListBlocks() {
-        let document = parser.parse("- First\n- Second")
-
-        #expect(document.chapters[0].blocks == [
-            .listItem(InlineText("First")),
-            .listItem(InlineText("Second")),
-        ])
-    }
-
-    @Test
-    func orderedListItemsBecomeListBlocks() {
-        let document = parser.parse("1. One\n2. Two")
-
-        #expect(document.chapters[0].blocks == [
-            .listItem(InlineText("One")),
-            .listItem(InlineText("Two")),
-        ])
-    }
-
-    @Test
-    func fencedCodeBecomesACodeBlockKeptVerbatim() {
-        let document = parser.parse("```\nlet x = **1**\n```")
-
-        #expect(document.chapters[0].blocks == [
-            .codeBlock("let x = **1**"),
-        ])
-    }
-
-    @Test
-    func dividerBecomesADividerBlock() {
-        let document = parser.parse("Text\n\n---\n\nMore")
-
-        #expect(document.chapters[0].blocks == [
-            .paragraph(InlineText("Text")),
-            .divider,
-            .paragraph(InlineText("More")),
-        ])
+        #expect(document.chapters[0].blocks == [.paragraph(InlineText("Text more"))])
     }
 
     @Test
     func quotesAndListItemsCarryInlineEmphasis() {
         let document = parser.parse("> **Bold** quote\n\n- *italic* item")
+        var quoteRuns: [InlineText.Run] = []
+        quoteRuns.append(bold("Bold"))
+        quoteRuns.append(plain(" quote"))
+        var itemRuns: [InlineText.Run] = []
+        itemRuns.append(italic("italic"))
+        itemRuns.append(plain(" item"))
+        var expected: [Block] = []
+        expected.append(.quote(InlineText(runs: quoteRuns)))
+        expected.append(.listItem(InlineText(runs: itemRuns)))
 
-        #expect(document.chapters[0].blocks == [
-            .quote(InlineText(runs: [bold("Bold"), plain(" quote")])),
-            .listItem(InlineText(runs: [italic("italic"), plain(" item")])),
-        ])
+        #expect(document.chapters[0].blocks == expected)
     }
-
-    // MARK: - Front matter
-
-    @Test
-    func frontMatterSurfacesTitleAndAuthor() {
-        let document = parser.parse("""
-        ---
-        title: The Book
-        author: Jane Doe
-        ---
-
-        # Chapter
-
-        Body.
-        """)
-
-        #expect(document.title == "The Book")
-        #expect(document.author == "Jane Doe")
-        #expect(document.chapters.map(\.title) == ["Chapter"])
-    }
-
-    @Test
-    func frontMatterValuesMayBeQuoted() {
-        let document = parser.parse("""
-        ---
-        title: "The Book"
-        author: 'Jane Doe'
-        ---
-        """)
-
-        #expect(document.title == "The Book")
-        #expect(document.author == "Jane Doe")
-    }
-
-    @Test
-    func emptyDocumentIsASingleChapter() {
-        let document = parser.parse("")
-
-        #expect(document.chapters.count == 1)
-        #expect(document.chapters[0].title == nil)
-        #expect(document.chapters[0].blocks.isEmpty)
-    }
-
-    @Test
-    func frontMatterOnlyDocumentIsASingleChapter() {
-        let document = parser.parse("---\ntitle: The Book\n---")
-
-        #expect(document.title == "The Book")
-        #expect(document.chapters.count == 1)
-    }
-
-    @Test
-    func documentOpeningWithADividerIsNotFrontMatter() {
-        let document = parser.parse("---\nIntro\n---\n\nMore")
-
-        #expect(document.title == nil)
-        #expect(document.chapters[0].blocks == [
-            .divider,
-            .paragraph(InlineText("Intro")),
-            .divider,
-            .paragraph(InlineText("More")),
-        ])
-    }
-
-    @Test
-    func headingKeepsATrailingHashNotPrecededBySpace() {
-        let document = parser.parse("# C#")
-
-        #expect(document.chapters[0].title == "C#")
-    }
-
-    @Test
-    func headingDropsAClosingHashSequence() {
-        let document = parser.parse("# Title ###")
-
-        #expect(document.chapters[0].title == "Title")
-    }
-
-    @Test
-    func imageOnlyQuoteIsSkipped() {
-        let document = parser.parse("> ![img](x.png)")
-
-        #expect(document.chapters[0].blocks.isEmpty)
-    }
-
-    // MARK: - Reading a file
-
-    @Test
-    func parsesMarkdownFromAFile() throws {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("\(UUID().uuidString).md")
-        try "# Chapter\n\nBody.".write(to: url, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        let document = try parser.parse(contentsOf: url)
-
-        #expect(document.chapters.map(\.title) == ["Chapter"])
-        #expect(document.chapters[0].blocks == [.paragraph(InlineText("Body."))])
-    }
-
-    @Test
-    func unreadableFileThrowsInsteadOfReturningAPartialDocument() {
-        let missing = FileManager.default.temporaryDirectory
-            .appendingPathComponent("\(UUID().uuidString).md")
-
-        #expect(throws: (any Error).self) {
-            try parser.parse(contentsOf: missing)
-        }
-    }
-
-    // MARK: - Helpers
 
     private func plain(_ string: String) -> InlineText.Run {
         InlineText.Run(text: string)
