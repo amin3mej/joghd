@@ -15,27 +15,67 @@ struct ImportServiceTests {
     }
 
     @Test
-    func importsEntryTitledFromFilename() throws {
+    func draftDerivesTitleAndFormatFromFilename() throws {
+        let source = try makeSourceFile(named: "Dune.epub")
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+
+        let draft = try ImportService(fileStore: TestBookFileStore()).draft(for: source)
+
+        #expect(draft.title == "Dune")
+        #expect(draft.author.isEmpty)
+        #expect(draft.format == .epub)
+        #expect(draft.source == source)
+    }
+
+    @Test
+    func draftDerivesMarkdownTitleFromFilename() throws {
+        let source = try makeSourceFile(named: "Notes.markdown")
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+
+        let draft = try ImportService(fileStore: TestBookFileStore()).draft(for: source)
+
+        #expect(draft.title == "Notes")
+        #expect(draft.format == .markdown)
+    }
+
+    @Test
+    func cancelStoresNoFileAndCreatesNoEntry() throws {
         let source = try makeSourceFile(named: "Dune.epub")
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
 
-        let entry = try ImportService(fileStore: store).importFile(at: source)
+        _ = try ImportService(fileStore: store).draft(for: source)
 
-        #expect(entry.title == "Dune")
+        #expect(store.storedSources.isEmpty)
+    }
+
+    @Test
+    func confirmCreatesEntryFromConfirmedValues() throws {
+        let source = try makeSourceFile(named: "Dune.epub")
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+        let store = TestBookFileStore()
+        var draft = try ImportService(fileStore: store).draft(for: source)
+        draft.title = "Dune (Revised)"
+        draft.author = "Frank Herbert"
+
+        let entry = try ImportService(fileStore: store).confirm(draft)
+
+        #expect(entry.title == "Dune (Revised)")
+        #expect(entry.author == "Frank Herbert")
         #expect(entry.format == .epub)
         #expect(store.storedSources[entry.id] == source)
     }
 
     @Test
-    func importsMarkdownTitledFromFilename() throws {
-        let source = try makeSourceFile(named: "Notes.markdown")
+    func confirmStoresEmptyAuthorAsNoAuthor() throws {
+        let source = try makeSourceFile(named: "Dune.epub")
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+        let store = TestBookFileStore()
+        let draft = try ImportService(fileStore: store).draft(for: source)
 
-        let entry = try ImportService(fileStore: TestBookFileStore()).importFile(at: source)
+        let entry = try ImportService(fileStore: store).confirm(draft)
 
-        #expect(entry.title == "Notes")
-        #expect(entry.format == .markdown)
+        #expect(entry.author == nil)
     }
 
     @Test
@@ -48,7 +88,8 @@ struct ImportServiceTests {
         let documentURL = directory.appendingPathComponent("library.json")
         let library = LibraryStore(repository: FileLibraryRepository(documentURL: documentURL))
 
-        let entry = try ImportService(fileStore: TestBookFileStore()).importFile(at: source)
+        let service = ImportService(fileStore: TestBookFileStore())
+        let entry = try service.confirm(service.draft(for: source))
         try library.add(entry)
 
         let reopened = LibraryStore(repository: FileLibraryRepository(documentURL: documentURL))
@@ -62,9 +103,10 @@ struct ImportServiceTests {
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
         store.shouldFail = true
+        let service = ImportService(fileStore: store)
 
         #expect(throws: (any Error).self) {
-            _ = try ImportService(fileStore: store).importFile(at: source)
+            _ = try service.confirm(service.draft(for: source))
         }
         #expect(store.storedSources.isEmpty)
     }
@@ -76,7 +118,7 @@ struct ImportServiceTests {
         let store = TestBookFileStore()
 
         #expect(throws: ImportError.self) {
-            _ = try ImportService(fileStore: store).importFile(at: source)
+            _ = try ImportService(fileStore: store).draft(for: source)
         }
         #expect(store.storedSources.isEmpty)
     }

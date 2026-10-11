@@ -4,6 +4,7 @@ import SwiftUI
 struct JoghdApp: App {
     @State private var library: LibraryStore
     @State private var isImporting = false
+    @State private var draft: ImportDraft?
     @State private var importError: String?
     private let importService: ImportService
 
@@ -16,6 +17,15 @@ struct JoghdApp: App {
                     allowedContentTypes: ImportFileTypes.allowed,
                     onCompletion: handleSelection
                 )
+                .sheet(item: $draft) { pending in
+                    ImportConfirmationView(
+                        draft: Binding(
+                            get: { draft ?? pending },
+                            set: { draft = $0 }
+                        ),
+                        onConfirm: confirmImport
+                    )
+                }
                 .alert("Import failed", isPresented: isShowingImportError) {
                     Button("OK", role: .cancel) {
                         importError = nil
@@ -44,8 +54,7 @@ struct JoghdApp: App {
         switch result {
         case .success(let url):
             do {
-                let entry = try importService.importFile(at: url)
-                try library.add(entry)
+                draft = try importService.draft(for: url)
                 importError = nil
             } catch {
                 importError = error.localizedDescription
@@ -55,6 +64,16 @@ struct JoghdApp: App {
             if (error as? CocoaError)?.code != .userCancelled {
                 importError = error.localizedDescription
             }
+        }
+    }
+
+    private func confirmImport(_ draft: ImportDraft) {
+        do {
+            let entry = try importService.confirm(draft)
+            try library.add(entry)
+            importError = nil
+        } catch {
+            importError = error.localizedDescription
         }
     }
 }

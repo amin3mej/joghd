@@ -8,15 +8,24 @@ struct ImportService {
         self.fileStore = fileStore
     }
 
-    func importFile(at source: URL) throws -> LibraryEntry {
-        let entry = LibraryEntry(
-            title: source.deletingPathExtension().lastPathComponent,
-            format: try LibraryEntry.TextFormat(sourceURL: source)
+    func draft(for source: URL) throws -> ImportDraft {
+        ImportDraft(
+            source: source,
+            format: try LibraryEntry.TextFormat(sourceURL: source),
+            title: source.deletingPathExtension().lastPathComponent
         )
-        let isAccessing = source.startAccessingSecurityScopedResource()
-        defer { if isAccessing { source.stopAccessingSecurityScopedResource() } }
+    }
 
-        _ = try fileStore.store(source, for: entry)
+    func confirm(_ draft: ImportDraft) throws -> LibraryEntry {
+        let entry = LibraryEntry(
+            title: draft.title,
+            author: draft.author.isEmpty ? nil : draft.author,
+            format: draft.format
+        )
+        let isAccessing = draft.source.startAccessingSecurityScopedResource()
+        defer { if isAccessing { draft.source.stopAccessingSecurityScopedResource() } }
+
+        _ = try fileStore.store(draft.source, for: entry)
         return entry
     }
 }
