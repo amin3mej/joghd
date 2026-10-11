@@ -1,6 +1,6 @@
 import Foundation
 
-struct ImportDraft: Identifiable, Hashable {
+struct ImportDraft: Identifiable {
     let id: UUID
     let source: URL
     let format: LibraryEntry.TextFormat

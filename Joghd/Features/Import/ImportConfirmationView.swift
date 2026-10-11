@@ -2,8 +2,9 @@ import SwiftUI
 
 struct ImportConfirmationView: View {
     @Environment(\.dismiss) private var dismiss
-    @Binding var draft: ImportDraft
-    let onConfirm: (ImportDraft) -> Void
+    @State private var draft: ImportDraft
+    @State private var errorMessage: String?
+    let onConfirm: (ImportDraft) -> String?
 
     var body: some View {
         NavigationStack {
@@ -21,11 +22,35 @@ struct ImportConfirmationView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
-                        onConfirm(draft)
-                        dismiss()
+                        if let message = onConfirm(draft) {
+                            errorMessage = message
+                        } else {
+                            dismiss()
+                        }
                     }
                 }
             }
+            .alert("Import failed", isPresented: isShowingError) {
+                Button("OK", role: .cancel) {
+                    errorMessage = nil
+                }
+            } message: {
+                Text(errorMessage ?? "")
+            }
         }
+    }
+
+    private var isShowingError: Binding<Bool> {
+        Binding(
+            get: { errorMessage != nil },
+            set: { isShowing in
+                if !isShowing { errorMessage = nil }
+            }
+        )
+    }
+
+    init(draft: ImportDraft, onConfirm: @escaping (ImportDraft) -> String?) {
+        _draft = State(initialValue: draft)
+        self.onConfirm = onConfirm
     }
 }

@@ -18,13 +18,7 @@ struct JoghdApp: App {
                     onCompletion: handleSelection
                 )
                 .sheet(item: $draft) { pending in
-                    ImportConfirmationView(
-                        draft: Binding(
-                            get: { draft ?? pending },
-                            set: { draft = $0 }
-                        ),
-                        onConfirm: confirmImport
-                    )
+                    ImportConfirmationView(draft: pending, onConfirm: confirmImport)
                 }
                 .alert("Import failed", isPresented: isShowingImportError) {
                     Button("OK", role: .cancel) {
@@ -67,13 +61,13 @@ struct JoghdApp: App {
         }
     }
 
-    private func confirmImport(_ draft: ImportDraft) {
+    private func confirmImport(_ draft: ImportDraft) -> String? {
         do {
             let entry = try importService.confirm(draft)
             try library.add(entry)
-            importError = nil
+            return nil
         } catch {
-            importError = error.localizedDescription
+            return error.localizedDescription
         }
     }
 }

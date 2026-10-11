@@ -39,7 +39,7 @@ struct ImportServiceTests {
     }
 
     @Test
-    func cancelStoresNoFileAndCreatesNoEntry() throws {
+    func draftDoesNotStoreFile() throws {
         let source = try makeSourceFile(named: "Dune.epub")
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
