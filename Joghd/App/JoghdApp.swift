@@ -4,6 +4,7 @@ import SwiftUI
 struct JoghdApp: App {
     @State private var library: LibraryStore
     @State private var isImporting = false
+    @State private var importActivity = ImportActivity()
     @State private var importError: String?
     private let importService: ImportService
 
@@ -11,6 +12,14 @@ struct JoghdApp: App {
         WindowGroup {
             LibraryView(isImporting: $isImporting)
                 .environment(library)
+                .overlay {
+                    if importActivity.isActive {
+                        ProgressView("Opening…")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(.regularMaterial)
+                            .ignoresSafeArea()
+                    }
+                }
                 .fileImporter(
                     isPresented: $isImporting,
                     allowedContentTypes: ImportFileTypes.allowed,
@@ -50,16 +59,23 @@ struct JoghdApp: App {
     private func handleSelection(_ result: Result<URL, any Error>) {
         switch result {
         case .success(let url):
-            do {
-                let entry = try importService.importFile(at: url)
-                try library.add(entry)
-                importError = nil
-            } catch {
-                importError = error.localizedDescription
-            }
+            beginImport(url)
 
         case .failure(let error):
             if (error as? CocoaError)?.code != .userCancelled {
+                importError = error.localizedDescription
+            }
+        }
+    }
+
+    private func beginImport(_ url: URL) {
+        importActivity.begin()
+        Task {
+            defer { importActivity.end() }
+            do {
+                let entry = try await importService.importFile(at: url)
+                try library.add(entry)
+            } catch {
                 importError = error.localizedDescription
             }
         }

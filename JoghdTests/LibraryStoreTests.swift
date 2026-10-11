@@ -104,7 +104,7 @@ struct LibraryStoreTests {
     }
 
     @Test
-    func deletionSurvivesNewStore() throws {
+    func deletionSurvivesNewStore() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -119,7 +119,7 @@ struct LibraryStoreTests {
         try store.add(entry)
         let source = directory.appendingPathComponent("Dune.epub")
         try Data("book".utf8).write(to: source)
-        let storedFile = try fileStore.store(source, for: entry)
+        let storedFile = try await fileStore.store(source, for: entry)
 
         try store.delete(entry)
 

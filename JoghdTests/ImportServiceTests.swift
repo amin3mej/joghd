@@ -5,42 +5,88 @@ import Testing
 
 @MainActor
 struct ImportServiceTests {
-    private func makeSourceFile(named name: String) throws -> URL {
+    private func makeSourceFile(named name: String, contents: Data) throws -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = directory.appendingPathComponent(name)
-        try Data("book".utf8).write(to: url)
+        try contents.write(to: url)
         return url
     }
 
-    @Test
-    func importsEntryTitledFromFilename() throws {
-        let source = try makeSourceFile(named: "Dune.epub")
-        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
-        let store = TestBookFileStore()
-
-        let entry = try ImportService(fileStore: store).importFile(at: source)
-
-        #expect(entry.title == "Dune")
-        #expect(entry.format == .epub)
-        #expect(store.storedSources[entry.id] == source)
+    private func makeEpub(named name: String = "Dune.epub") throws -> URL {
+        let data = EpubFixture.zip {
+            ("META-INF/container.xml", EpubFixture.container)
+            (
+                "OEBPS/content.opf",
+                EpubFixture.package(manifest: [(id: "a", href: "a.xhtml")], spine: ["a"])
+            )
+            ("OEBPS/a.xhtml", EpubFixture.chapter(title: "A", body: "<p>Body</p>"))
+        }
+        return try makeSourceFile(named: name, contents: data)
     }
 
     @Test
-    func importsMarkdownTitledFromFilename() throws {
-        let source = try makeSourceFile(named: "Notes.markdown")
+    func importsEntryTitledFromFilename() async throws {
+        let source = try makeEpub()
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+        let store = TestBookFileStore()
+
+        let entry = try await ImportService(fileStore: store).importFile(at: source)
+
+        let sourceData = try Data(contentsOf: source)
+        #expect(entry.title == "Dune")
+        #expect(entry.format == .epub)
+        #expect(store.storedSources[entry.id] != source)
+        #expect(store.storedData[entry.id] == sourceData)
+    }
+
+    @Test
+    func importsMarkdownTitledFromFilename() async throws {
+        let source = try makeSourceFile(
+            named: "Notes.markdown",
+            contents: Data("# Notes\n\nBody.".utf8)
+        )
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
 
-        let entry = try ImportService(fileStore: TestBookFileStore()).importFile(at: source)
+        let entry = try await ImportService(fileStore: TestBookFileStore()).importFile(at: source)
 
         #expect(entry.title == "Notes")
         #expect(entry.format == .markdown)
     }
 
     @Test
-    func importedEntrySurvivesReopeningRepository() throws {
-        let source = try makeSourceFile(named: "Dune.epub")
+    func importsSymlinkContentsIntoLibrary() async throws {
+        let target = try makeEpub(named: "Actual.epub")
+        defer { try? FileManager.default.removeItem(at: target.deletingLastPathComponent()) }
+        let sourceDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: sourceDirectory, withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: sourceDirectory) }
+        let source = sourceDirectory.appendingPathComponent("Dune.epub")
+        try FileManager.default.createSymbolicLink(at: source, withDestinationURL: target)
+        let storageDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: storageDirectory) }
+        let expectedData = try Data(contentsOf: target)
+
+        let entry = try await ImportService(
+            fileStore: FileBookFileStore(directoryURL: storageDirectory)
+        ).importFile(at: source)
+
+        let storedFile =
+            storageDirectory
+            .appendingPathComponent(entry.id.uuidString, isDirectory: true)
+            .appendingPathComponent("Dune.epub")
+        try FileManager.default.removeItem(at: target)
+        #expect(try Data(contentsOf: storedFile) == expectedData)
+    }
+
+    @Test
+    func importedEntrySurvivesReopeningRepository() async throws {
+        let source = try makeEpub()
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
@@ -51,7 +97,7 @@ struct ImportServiceTests {
             fileStore: TestBookFileStore()
         )
 
-        let entry = try ImportService(fileStore: TestBookFileStore()).importFile(at: source)
+        let entry = try await ImportService(fileStore: TestBookFileStore()).importFile(at: source)
         try library.add(entry)
 
         let reopened = LibraryStore(
@@ -63,26 +109,69 @@ struct ImportServiceTests {
     }
 
     @Test
-    func storeFailureLeavesNoEntry() throws {
-        let source = try makeSourceFile(named: "Dune.epub")
+    func storeFailureLeavesNoEntry() async throws {
+        let source = try makeEpub()
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
         store.shouldFail = true
 
-        #expect(throws: (any Error).self) {
-            _ = try ImportService(fileStore: store).importFile(at: source)
+        await #expect(throws: (any Error).self) {
+            _ = try await ImportService(fileStore: store).importFile(at: source)
         }
         #expect(store.storedSources.isEmpty)
     }
 
     @Test
-    func unsupportedFileIsRejected() throws {
-        let source = try makeSourceFile(named: "Notes.pdf")
+    func unsupportedFileIsRejectedWithoutStoring() async throws {
+        let source = try makeSourceFile(named: "Notes.pdf", contents: Data("book".utf8))
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
 
-        #expect(throws: ImportError.self) {
-            _ = try ImportService(fileStore: store).importFile(at: source)
+        await #expect(throws: ImportError.self) {
+            _ = try await ImportService(fileStore: store).importFile(at: source)
+        }
+        #expect(store.storedSources.isEmpty)
+    }
+
+    @Test
+    func malformedEpubIsRejectedWithoutStoring() async throws {
+        let source = try makeSourceFile(
+            named: "Broken.epub",
+            contents: Data(repeating: 0x41, count: 64)
+        )
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+        let store = TestBookFileStore()
+
+        await #expect(throws: ImportError.unreadableFile) {
+            _ = try await ImportService(fileStore: store).importFile(at: source)
+        }
+        #expect(store.storedSources.isEmpty)
+    }
+
+    @Test
+    func malformedMarkdownIsRejectedWithoutStoring() async throws {
+        let source = try makeSourceFile(
+            named: "Broken.md",
+            contents: Data([0xFF, 0xFE, 0xFF])
+        )
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+        let store = TestBookFileStore()
+
+        await #expect(throws: ImportError.unreadableFile) {
+            _ = try await ImportService(fileStore: store).importFile(at: source)
+        }
+        #expect(store.storedSources.isEmpty)
+    }
+
+    @Test
+    func missingFileIsRejectedWithoutStoring() async throws {
+        let source = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("epub")
+        let store = TestBookFileStore()
+
+        await #expect(throws: ImportError.unreadableFile) {
+            _ = try await ImportService(fileStore: store).importFile(at: source)
         }
         #expect(store.storedSources.isEmpty)
     }
