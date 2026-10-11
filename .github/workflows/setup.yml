@@ -1,9 +1,5 @@
 name: Setup
 
-# Reusable component: checks out the repo, selects the pinned Xcode, installs
-# the pinned XcodeGen, generates the Xcode project from project.yml, and
-# publishes the generated project as an artifact for later jobs to consume.
-# The pinned versions live in .github/ci/versions.json.
 on:
   workflow_call:
 
@@ -16,13 +12,13 @@ jobs:
     runs-on: macos-15
     steps:
       - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
 
       - name: Select Xcode
         run: |
-          XCODE_VERSION="$(jq -r .xcode .github/ci/versions.json)"
+          XCODE_VERSION="$(awk '$1 == "xcode" { print $2; exit }' .tool-versions)"
           DEVELOPER_DIR="/Applications/Xcode_${XCODE_VERSION}.app"
           echo "Selecting ${DEVELOPER_DIR}"
           sudo xcode-select -s "${DEVELOPER_DIR}"
@@ -30,8 +26,8 @@ jobs:
 
       - name: Install XcodeGen
         run: |
-          VERSION="$(jq -r .xcodegen.version .github/ci/versions.json)"
-          SHA256="$(jq -r .xcodegen.sha256 .github/ci/versions.json)"
+          VERSION="$(awk '$1 == "xcodegen" { print $2; exit }' .tool-versions)"
+          SHA256="4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
           curl -fsSL -o xcodegen.zip \
             "https://github.com/yonaskolb/XcodeGen/releases/download/${VERSION}/xcodegen.zip"
           echo "${SHA256}  xcodegen.zip" | shasum -a 256 -c -
@@ -43,7 +39,7 @@ jobs:
         run: xcodegen generate
 
       - name: Upload generated project
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: generated-project
           path: Joghd.xcodeproj

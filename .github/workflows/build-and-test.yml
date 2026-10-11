@@ -12,15 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  setup:
-    name: setup
-    uses: ./.github/workflows/setup.yml
-    permissions:
-      contents: read
-
   test:
     name: test
-    needs: setup
     uses: ./.github/workflows/test.yml
     permissions:
       contents: read
