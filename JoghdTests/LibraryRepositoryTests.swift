@@ -170,6 +170,48 @@ struct LibraryRepositoryTests {
     }
 
     @Test
+    func persistedReadingPositionIsRestored() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("library.json")
+        let entry = LibraryEntry(
+            title: "Dune",
+            format: .epub,
+            readingPosition: Location(index: 12)
+        )
+        let repository: any LibraryRepository = FileLibraryRepository(documentURL: url)
+        try repository.upsert(entry)
+
+        let reopened: any LibraryRepository = FileLibraryRepository(documentURL: url)
+        #expect(try reopened.entries() == [entry])
+    }
+
+    @Test
+    func entryPersistedBeforeReadingPositionsExistedDecodesWithNoPosition() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("library.json")
+        let entry = LibraryEntry(
+            title: "Dune",
+            format: .epub,
+            readingPosition: Location(index: 4)
+        )
+        var legacyEntries =
+            try JSONSerialization.jsonObject(
+                with: JSONEncoder().encode([entry])
+            ) as? [[String: Any]]
+        legacyEntries?[0].removeValue(forKey: "readingPosition")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try JSONSerialization.data(withJSONObject: legacyEntries as Any).write(to: url)
+
+        let repository: any LibraryRepository = FileLibraryRepository(documentURL: url)
+
+        #expect(try repository.entries().first?.readingPosition == nil)
+    }
+
+    @Test
     func entryPersistedBeforeCoversExistedDecodesWithNoCover() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)

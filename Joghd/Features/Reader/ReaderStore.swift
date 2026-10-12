@@ -11,12 +11,17 @@ final class ReaderStore {
     }
 
     private(set) var state: State = .loading
-    let entry: LibraryEntry
+    private(set) var entry: LibraryEntry
+    private(set) var position: Location?
+    private(set) var saveError: String?
     private let fileStore: any BookFileStore
+    private let repository: any LibraryRepository
 
-    init(entry: LibraryEntry, fileStore: any BookFileStore) {
+    init(entry: LibraryEntry, fileStore: any BookFileStore, repository: any LibraryRepository) {
         self.entry = entry
         self.fileStore = fileStore
+        self.repository = repository
+        self.position = entry.readingPosition
     }
 
     nonisolated private static func document(
@@ -40,6 +45,7 @@ final class ReaderStore {
 
     func load() async {
         state = .loading
+        refreshEntry()
         do {
             let fileURL = try fileStore.storedFile(for: entry)
             let format = entry.format
@@ -50,5 +56,31 @@ final class ReaderStore {
         } catch {
             state = .failed(Self.message(for: error))
         }
+    }
+
+    func record(_ location: Location) {
+        guard location != position else {
+            return
+        }
+        position = location
+        entry.readingPosition = location
+        do {
+            try repository.upsert(entry)
+            saveError = nil
+        } catch {
+            saveError = Self.message(for: error)
+        }
+    }
+
+    func clearSaveError() {
+        saveError = nil
+    }
+
+    private func refreshEntry() {
+        guard let stored = try? repository.entries().first(where: { $0.id == entry.id }) else {
+            return
+        }
+        entry = stored
+        position = stored.readingPosition
     }
 }
