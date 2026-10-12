@@ -11,6 +11,7 @@ struct JoghdApp: App {
     @State private var currentSelectionID = UUID()
     private let importService: ImportService
     private let fileStore: any BookFileStore
+    private let libraryRepository: any LibraryRepository
 
     var body: some Scene {
         WindowGroup {
@@ -22,7 +23,9 @@ struct JoghdApp: App {
         NavigationStack {
             LibraryView(isImporting: $isImporting)
                 .navigationDestination(for: LibraryEntry.self) { entry in
-                    ReaderView(entry: entry, fileStore: fileStore)
+                    ReaderView(
+                        entry: entry, fileStore: fileStore, repository: libraryRepository
+                    )
                 }
         }
         .environment(library)
@@ -63,10 +66,12 @@ struct JoghdApp: App {
 
     init() {
         let store = FileBookFileStore()
+        let repository: any LibraryRepository = FileLibraryRepository()
         self.fileStore = store
+        self.libraryRepository = repository
         _library = State(
             initialValue: LibraryStore(
-                repository: FileLibraryRepository(),
+                repository: repository,
                 fileStore: store
             )
         )

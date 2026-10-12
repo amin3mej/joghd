@@ -13,7 +13,11 @@ struct ReaderStoreTests {
         let fileStore = TestBookFileStore()
         _ = try await fileStore.store(source, for: entry)
 
-        let store = ReaderStore(entry: entry, fileStore: fileStore)
+        let store = ReaderStore(
+            entry: entry,
+            fileStore: fileStore,
+            repository: TestLibraryRepository(savedEntries: [entry])
+        )
         await store.load()
 
         guard case .loaded(let document) = store.state else {
@@ -44,7 +48,11 @@ struct ReaderStoreTests {
         let fileStore = TestBookFileStore()
         _ = try await fileStore.store(source, for: entry)
 
-        let store = ReaderStore(entry: entry, fileStore: fileStore)
+        let store = ReaderStore(
+            entry: entry,
+            fileStore: fileStore,
+            repository: TestLibraryRepository(savedEntries: [entry])
+        )
         await store.load()
 
         guard case .loaded(let document) = store.state else {
@@ -55,10 +63,48 @@ struct ReaderStoreTests {
     }
 
     @Test
+    func resumesFromThePersistedReadingPosition() async throws {
+        let (entry, fileStore) = try await makeStoredEntry()
+        var stored = entry
+        stored.readingPosition = Location(index: 2)
+        let repository = TestLibraryRepository(savedEntries: [stored])
+
+        let store = ReaderStore(entry: entry, fileStore: fileStore, repository: repository)
+        await store.load()
+
+        #expect(store.position == Location(index: 2))
+    }
+
+    @Test
+    func recordsTheReadingPosition() async throws {
+        let (entry, fileStore) = try await makeStoredEntry()
+        let repository = TestLibraryRepository(savedEntries: [entry])
+
+        let store = ReaderStore(entry: entry, fileStore: fileStore, repository: repository)
+        store.record(Location(index: 7))
+
+        #expect(repository.savedEntries.first?.readingPosition == Location(index: 7))
+    }
+
+    @Test
+    func resumesFromAPositionRecordedByAnEarlierReader() async throws {
+        let (entry, fileStore) = try await makeStoredEntry()
+        let repository = TestLibraryRepository(savedEntries: [entry])
+        let first = ReaderStore(entry: entry, fileStore: fileStore, repository: repository)
+        first.record(Location(index: 3))
+
+        let second = ReaderStore(entry: entry, fileStore: fileStore, repository: repository)
+        await second.load()
+
+        #expect(second.position == Location(index: 3))
+    }
+
+    @Test
     func reportsFailureWhenTheStoredFileIsGone() async {
         let store = ReaderStore(
             entry: LibraryEntry(title: "Gone", format: .epub),
-            fileStore: TestBookFileStore()
+            fileStore: TestBookFileStore(),
+            repository: TestLibraryRepository()
         )
 
         await store.load()
@@ -77,13 +123,26 @@ struct ReaderStoreTests {
         let fileStore = TestBookFileStore()
         _ = try await fileStore.store(source, for: entry)
 
-        let store = ReaderStore(entry: entry, fileStore: fileStore)
+        let store = ReaderStore(
+            entry: entry,
+            fileStore: fileStore,
+            repository: TestLibraryRepository(savedEntries: [entry])
+        )
         await store.load()
 
         guard case .failed = store.state else {
             Issue.record("Expected the reader to reject the PDF")
             return
         }
+    }
+
+    private func makeStoredEntry() async throws -> (LibraryEntry, TestBookFileStore) {
+        let source = try makeSourceFile(named: "Notes.md", contents: "# Chapter\n\nBody.")
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+        let entry = LibraryEntry(title: "Notes", format: .markdown)
+        let fileStore = TestBookFileStore()
+        _ = try await fileStore.store(source, for: entry)
+        return (entry, fileStore)
     }
 
     private func makeSourceFile(named name: String, contents: String) throws -> URL {

@@ -2,19 +2,19 @@ import UIKit
 
 @MainActor
 enum BookPagination {
-    static func pages(of text: NSAttributedString, pageSize: CGSize) -> [NSAttributedString] {
+    static func pages(of text: NSAttributedString, pageSize: CGSize) -> [BookPage] {
         guard text.length > 0 else {
-            return [text]
+            return [BookPage(text: text, range: NSRange(location: 0, length: 0))]
         }
         guard pageSize.width > 0, pageSize.height > 0 else {
-            return [text]
+            return [BookPage(text: text, range: NSRange(location: 0, length: text.length))]
         }
 
         let storage = NSTextStorage(attributedString: text)
         let layoutManager = NSLayoutManager()
         storage.addLayoutManager(layoutManager)
 
-        var pages: [NSAttributedString] = []
+        var pages: [BookPage] = []
         var consumed = 0
         while consumed < text.length {
             let container = NSTextContainer(size: pageSize)
@@ -30,9 +30,27 @@ enum BookPagination {
             guard characterRange.length > 0, NSMaxRange(characterRange) > consumed else {
                 break
             }
-            pages.append(text.attributedSubstring(from: characterRange))
+            pages.append(
+                BookPage(
+                    text: text.attributedSubstring(from: characterRange),
+                    range: characterRange
+                )
+            )
             consumed = NSMaxRange(characterRange)
         }
         return pages
+    }
+
+    static func pageIndex(for location: Location, in pages: [BookPage]) -> Int {
+        guard let first = pages.first else {
+            return 0
+        }
+        let offset = location.characterOffset
+        if let index = pages.firstIndex(where: { page in
+            page.range.location <= offset && offset < NSMaxRange(page.range)
+        }) {
+            return index
+        }
+        return offset < first.range.location ? 0 : pages.count - 1
     }
 }

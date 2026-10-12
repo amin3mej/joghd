@@ -12,6 +12,7 @@ struct LibraryEntry: Identifiable, Hashable, Codable {
     var author: String?
     var format: TextFormat
     var importedAt: Date
+    var readingPosition: Location?
     var coverImageData: Data?
 
     init(
@@ -20,6 +21,7 @@ struct LibraryEntry: Identifiable, Hashable, Codable {
         author: String? = nil,
         format: TextFormat,
         importedAt: Date = .now,
+        readingPosition: Location? = nil,
         coverImageData: Data? = nil
     ) {
         self.id = id
@@ -27,6 +29,7 @@ struct LibraryEntry: Identifiable, Hashable, Codable {
         self.author = author
         self.format = format
         self.importedAt = importedAt
+        self.readingPosition = readingPosition
         self.coverImageData = coverImageData
     }
 }
