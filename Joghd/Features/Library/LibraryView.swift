@@ -38,7 +38,7 @@ struct LibraryView: View {
         } else if library.entries.isEmpty {
             emptyState
         } else {
-            list
+            grid
         }
     }
 
@@ -68,14 +68,9 @@ struct LibraryView: View {
         }
     }
 
-    private var list: some View {
-        List(library.entries) { entry in
-            Text(entry.title)
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button("Delete", role: .destructive) {
-                        entryPendingDeletion = entry
-                    }
-                }
+    private var grid: some View {
+        LibraryGridView(entries: library.entries) { entry in
+            entryPendingDeletion = entry
         }
     }
 
