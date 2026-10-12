@@ -19,11 +19,18 @@ struct LibrarySearchBar: View {
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("Done") {
-                        isFocused = false
-                    }
+                    applySearchButton
                 }
             }
+    }
+
+    private var applySearchButton: some View {
+        Button {
+            isFocused = false
+        } label: {
+            Image(systemName: "magnifyingglass")
+        }
+        .accessibilityLabel("Search")
     }
 
     @ViewBuilder
