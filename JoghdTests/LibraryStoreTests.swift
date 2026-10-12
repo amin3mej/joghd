@@ -6,6 +6,100 @@ import Testing
 @MainActor
 struct LibraryStoreTests {
     @Test
+    func searchWithNoMatchesKeepsLibraryEntriesAndCanBeCleared() throws {
+        let anonymous = LibraryEntry(title: "Anonymous", format: .epub)
+        let store = LibraryStore(
+            repository: TestLibraryRepository(savedEntries: [anonymous]),
+            fileStore: TestBookFileStore()
+        )
+        try store.reload()
+
+        store.searchQuery = "missing"
+        #expect(store.filteredEntries.isEmpty)
+        #expect(store.entries == [anonymous])
+        store.searchQuery = "ANON"
+        #expect(store.filteredEntries == [anonymous])
+        store.searchQuery = ""
+        #expect(store.filteredEntries == [anonymous])
+    }
+
+    @Test
+    func reloadAndUpsertRespectActiveSearchWithoutResettingQuery() throws {
+        let dune = LibraryEntry(title: "Dune", format: .epub)
+        let repository = TestLibraryRepository(savedEntries: [dune])
+        let store = LibraryStore(repository: repository, fileStore: TestBookFileStore())
+        try store.reload()
+        store.searchQuery = "DUNE"
+
+        let sequel = LibraryEntry(title: "Dune Messiah", format: .epub)
+        try repository.upsert(sequel)
+        try store.reload()
+        #expect(store.searchQuery == "DUNE")
+        #expect(store.filteredEntries == [dune, sequel])
+
+        let unrelated = LibraryEntry(title: "Foundation", format: .epub)
+        try store.upsert(unrelated)
+        #expect(store.filteredEntries == [dune, sequel])
+        var revised = unrelated
+        revised.author = "Dune historian"
+        try store.upsert(revised)
+        #expect(store.filteredEntries == [dune, sequel, revised])
+        #expect(store.searchQuery == "DUNE")
+    }
+
+    @Test
+    func failedReloadAndDeletionRetainActiveSearch() throws {
+        let dune = LibraryEntry(title: "Dune", format: .epub)
+        let repository = TestLibraryRepository(savedEntries: [dune])
+        let store = LibraryStore(repository: repository, fileStore: TestBookFileStore())
+        try store.reload()
+        store.searchQuery = "dune"
+        repository.shouldFail = true
+
+        #expect(throws: (any Error).self) { try store.reload() }
+        #expect(store.filteredEntries == [dune])
+        #expect(store.searchQuery == "dune")
+        repository.shouldFail = false
+        try store.delete(dune)
+        #expect(store.entries.isEmpty)
+        #expect(store.filteredEntries.isEmpty)
+        #expect(store.searchQuery == "dune")
+    }
+
+    @Test(arguments: ["CAFE", "fé", "garcia", "MÁRQUEZ"])
+    func searchIgnoresCaseAndAccentsInTitleAndOptionalAuthor(query: String) throws {
+        let cafe = LibraryEntry(title: "Café", author: "Gabriel García Márquez", format: .epub)
+        let anonymous = LibraryEntry(title: "Anonymous", format: .epub)
+        let store = LibraryStore(
+            repository: TestLibraryRepository(savedEntries: [anonymous, cafe]),
+            fileStore: TestBookFileStore()
+        )
+        try store.reload()
+
+        store.searchQuery = query
+        #expect(store.filteredEntries == [cafe])
+    }
+
+    @Test
+    func searchMatchesTitleSubstringsAndClearingRestoresOrder() throws {
+        let dune = LibraryEntry(title: "Dune", format: .epub)
+        let foundation = LibraryEntry(title: "Foundation", format: .epub)
+        let sequel = LibraryEntry(title: "Dune Messiah", format: .epub)
+        let store = LibraryStore(
+            repository: TestLibraryRepository(savedEntries: [dune, foundation, sequel]),
+            fileStore: TestBookFileStore()
+        )
+        try store.reload()
+
+        #expect(store.filteredEntries == [dune, foundation, sequel])
+        store.searchQuery = "une"
+        #expect(store.filteredEntries == [dune, sequel])
+        #expect(store.entries == [dune, foundation, sequel])
+        store.searchQuery = ""
+        #expect(store.filteredEntries == [dune, foundation, sequel])
+    }
+
+    @Test
     func startsEmpty() throws {
         let store = LibraryStore(
             repository: TestLibraryRepository(),

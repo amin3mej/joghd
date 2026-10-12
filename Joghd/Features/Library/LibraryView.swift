@@ -9,11 +9,16 @@ struct LibraryView: View {
     @State private var deleteError: String?
 
     var body: some View {
+        @Bindable var library = library
+
         deleteAlerts(libraryContent)
             .safeAreaInset(edge: .top, spacing: 0) {
                 LibraryHeader {
                     isImporting = true
                 }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                LibrarySearchBar(query: $library.searchQuery)
             }
             .toolbar(.hidden, for: .navigationBar)
             .onChange(of: scenePhase, initial: true) { _, phase in
@@ -33,6 +38,12 @@ struct LibraryView: View {
             }
         } else if library.entries.isEmpty {
             emptyState
+        } else if library.filteredEntries.isEmpty {
+            ContentUnavailableView {
+                Label("No matching books", systemImage: "magnifyingglass")
+            } description: {
+                Text("Try a different title or author, or clear your search.")
+            }
         } else {
             grid
         }
@@ -65,7 +76,7 @@ struct LibraryView: View {
     }
 
     private var grid: some View {
-        LibraryGridView(entries: library.entries) { entry in
+        LibraryGridView(entries: library.filteredEntries) { entry in
             entryPendingDeletion = entry
         }
     }
