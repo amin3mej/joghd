@@ -42,8 +42,10 @@ struct PaginationView: View {
         .onChange(of: currentPageID) { _, index in
             guard !isRestoring else {
                 isRestoring = false
+                startFill(after: index)
                 return
             }
+            pendingResumeLocation = nil
             reportPosition(at: index)
             startFill(after: index)
         }

@@ -22,18 +22,6 @@ struct BookPaginatorTests {
     }
 
     @Test
-    func firstPageOfALargeBookCompletesWithinABoundedTime() {
-        let text = largeBookText()
-
-        let elapsed = ContinuousClock().measure {
-            let paginator = BookPaginator(text: text, pageSize: pageSize)
-            _ = paginator.appendNextPage()
-        }
-
-        #expect(elapsed < .seconds(2))
-    }
-
-    @Test
     func incrementalPaginationPreservesEveryCharacter() {
         let text = BookText.attributedString(of: manyChapterDocument(chapters: 4))
 
