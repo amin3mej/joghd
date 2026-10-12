@@ -6,18 +6,27 @@ struct PaginationView: View {
     @State private var pages: [NSAttributedString] = []
 
     var body: some View {
-        PageTextView(text: pages.first ?? NSAttributedString())
-            .frame(
-                width: max(pageSize.width, 0),
-                height: max(pageSize.height, 0),
-                alignment: .topLeading
-            )
-            .onChange(of: pageSize, initial: true) { _, size in
-                paginate(size)
+        ScrollView(.horizontal) {
+            LazyHStack(spacing: 0) {
+                ForEach(pages.indices, id: \.self) { index in
+                    PageTextView(text: pages[index])
+                        .frame(
+                            width: max(pageSize.width, 0),
+                            height: max(pageSize.height, 0),
+                            alignment: .topLeading
+                        )
+                }
             }
-            .onChange(of: document) { _, _ in
-                paginate(pageSize)
-            }
+            .scrollTargetLayout()
+        }
+        .scrollTargetBehavior(.paging)
+        .scrollIndicators(.hidden)
+        .onChange(of: pageSize, initial: true) { _, size in
+            paginate(size)
+        }
+        .onChange(of: document) { _, _ in
+            paginate(pageSize)
+        }
     }
 
     private func paginate(_ size: CGSize) {
