@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct LibraryEntryCell: View {
     private static let coverToTextSpacing: CGFloat = 8
@@ -10,7 +11,7 @@ struct LibraryEntryCell: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Self.coverToTextSpacing) {
-            BookCoverView(cover: GeneratedCover(title: entry.title, author: entry.author))
+            cover
             VStack(alignment: .leading, spacing: Self.textSpacing) {
                 Text(entry.title)
                     .font(.subheadline.weight(.semibold))
@@ -25,6 +26,15 @@ struct LibraryEntryCell: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(entry.coverAccessibilityLabel)
+    }
+
+    @ViewBuilder
+    private var cover: some View {
+        if let data = entry.coverImageData, let image = UIImage(data: data) {
+            CoverImageView(image: image)
+        } else {
+            BookCoverView(cover: GeneratedCover(title: entry.title, author: entry.author))
+        }
     }
 }
 

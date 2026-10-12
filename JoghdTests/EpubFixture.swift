@@ -60,7 +60,9 @@ enum EpubFixture {
         author: String? = "The Author",
         manifest: [(id: String, href: String)],
         spine: [String],
-        nonLinear: [String] = []
+        nonLinear: [String] = [],
+        properties: [String: String] = [:],
+        metaCoverID: String? = nil
     ) -> String {
         var lines: [String] = []
         lines.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
@@ -75,13 +77,17 @@ enum EpubFixture {
         if let author {
             lines.append("<dc:creator>\(author)</dc:creator>")
         }
+        if let metaCoverID {
+            lines.append("<meta name=\"cover\" content=\"\(metaCoverID)\"/>")
+        }
         lines.append("</metadata>")
         lines.append("<manifest>")
         for item in manifest {
-            lines.append(
-                "<item id=\"\(item.id)\" href=\"\(item.href)\" "
-                    + "media-type=\"application/xhtml+xml\"/>"
-            )
+            var attributes = "id=\"\(item.id)\" href=\"\(item.href)\""
+            if let itemProperties = properties[item.id] {
+                attributes += " properties=\"\(itemProperties)\""
+            }
+            lines.append("<item \(attributes) media-type=\"application/xhtml+xml\"/>")
         }
         lines.append("</manifest>")
         lines.append("<spine>")
@@ -114,15 +120,18 @@ enum EpubFixture {
     }
 
     static func zip(deflated: Bool = false, @Builder _ build: () -> [(String, String)]) -> Data {
-        write(build(), deflated: deflated)
+        write(build().map { ($0.0, Data($0.1.utf8)) }, deflated: deflated)
     }
 
-    private static func write(_ entries: [(String, String)], deflated: Bool) -> Data {
+    static func zipBytes(deflated: Bool = false, _ entries: [(String, Data)]) -> Data {
+        write(entries, deflated: deflated)
+    }
+
+    private static func write(_ entries: [(String, Data)], deflated: Bool) -> Data {
         var output = Data()
         var directory = Data()
-        for (path, contents) in entries {
+        for (path, file) in entries {
             let name = Data(path.utf8)
-            let file = Data(contents.utf8)
             let payload = deflated ? deflate(file) : file
             let method = deflated ? Format.deflatedMethod : Format.storedMethod
             let checksum = CRC32.compute(file)

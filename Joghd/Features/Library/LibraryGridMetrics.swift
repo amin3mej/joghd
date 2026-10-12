@@ -2,6 +2,7 @@ import SwiftUI
 
 enum LibraryGridMetrics {
     static let spacing: CGFloat = 16
+    static let coverCornerRadius: CGFloat = 8
     static let coverAspectRatio: CGFloat = coverWidth / coverHeight
     static let columns = Array(
         repeating: GridItem(.flexible(), spacing: spacing, alignment: .top),
