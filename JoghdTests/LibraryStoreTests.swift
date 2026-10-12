@@ -203,6 +203,31 @@ struct LibraryStoreTests {
     }
 
     @Test
+    func backfillPopulatesCoverDeclaredByTheEpub2Meta() async throws {
+        let source = try TestFiles.source(
+            named: "MetaCover.epub",
+            contents: EpubCoverFixture.epub(
+                manifest: [(id: "a", href: "a.xhtml"), (id: "cover-image", href: "cover.jpg")],
+                metaCoverID: "cover-image",
+                resources: [("OEBPS/cover.jpg", CoverFixture.imageData(width: 400, height: 600))]
+            )
+        )
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+        let entry = LibraryEntry(title: "Protocols", format: .epub)
+        let repository = TestLibraryRepository(savedEntries: [entry])
+        let fileStore = TestBookFileStore()
+        fileStore.storedSources[entry.id] = source
+        let store = LibraryStore(repository: repository, fileStore: fileStore)
+        try store.reload()
+
+        await store.backfillMissingCovers()
+
+        let backed = try #require(store.entries.first?.coverImageData)
+        #expect(CoverFixture.pixelSize(of: backed) != nil)
+        #expect(repository.savedEntries.first?.coverImageData != nil)
+    }
+
+    @Test
     func backfillLeavesCoverlessEpubUnchanged() async throws {
         let source = try TestFiles.source(
             named: "NoCover.epub",
