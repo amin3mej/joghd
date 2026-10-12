@@ -8,15 +8,16 @@ struct ImportService {
         self.fileStore = fileStore
     }
 
-    nonisolated private static func openDocument(
+    nonisolated private static func openBook(
         at source: URL, format: LibraryEntry.TextFormat
-    ) throws -> BookDocument {
+    ) throws -> BookImport {
         switch format {
         case .epub:
-            try EpubBookParser().parse(contentsOf: source)
+            return try EpubBookParser().importBook(contentsOf: source)
 
         case .markdown:
-            try MarkdownBookParser().parse(contentsOf: source)
+            let document = try MarkdownBookParser().parse(contentsOf: source)
+            return BookImport(document: document, coverImage: nil)
 
         case .pdf:
             throw ImportError.unsupportedFormat
@@ -68,7 +69,7 @@ struct ImportService {
     }
 
     func confirm(_ draft: ImportDraft) async throws -> LibraryEntry {
-        let entry = LibraryEntry(
+        var entry = LibraryEntry(
             title: draft.title,
             author: author(from: draft),
             format: draft.format
@@ -87,8 +88,9 @@ struct ImportService {
         defer { try? FileManager.default.removeItem(at: staged.deletingLastPathComponent()) }
 
         do {
-            _ = try await Task.detached(priority: .userInitiated) {
-                try Self.openDocument(at: staged, format: draft.format)
+            entry.coverImageData = try await Task.detached(priority: .userInitiated) {
+                let book = try Self.openBook(at: staged, format: draft.format)
+                return book.coverImage.flatMap(BookCoverThumbnail.make(from:))
             }.value
         } catch {
             throw ImportError.unreadableFile

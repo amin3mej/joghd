@@ -7,7 +7,6 @@ struct BookCoverView: View {
     private static let foregroundBrightness: Double = 0.28
     private static let contentSpacing: CGFloat = 6
     private static let contentPadding: CGFloat = 12
-    private static let cornerRadius: CGFloat = 8
     private static let titleLineLimit = 5
     private static let authorLineLimit = 2
     private static let minimumScaleFactor: CGFloat = 0.5
@@ -35,7 +34,7 @@ struct BookCoverView: View {
             .padding(Self.contentPadding)
         }
         .aspectRatio(LibraryGridMetrics.coverAspectRatio, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: Self.cornerRadius))
+        .clipShape(RoundedRectangle(cornerRadius: LibraryGridMetrics.coverCornerRadius))
     }
 
     private var background: Color {

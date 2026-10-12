@@ -4,12 +4,7 @@ struct EpubBookParser {
     func parse(_ data: Data) throws -> BookDocument {
         let archive = try ZipArchive(data: data)
         let package = try package(in: archive)
-
-        let chapters = try package.spine.map { path in
-            try EpubChapterScanner.scan(try text(of: path, in: archive))
-        }
-
-        return BookDocument(title: package.title, author: package.author, chapters: chapters)
+        return try document(in: archive, package: package)
     }
 
     func parse(contentsOf url: URL) throws -> BookDocument {
@@ -23,6 +18,33 @@ struct EpubBookParser {
 
     func metadata(contentsOf url: URL) throws -> BookMetadata {
         try metadata(try Data(contentsOf: url))
+    }
+
+    func importBook(_ data: Data) throws -> BookImport {
+        let archive = try ZipArchive(data: data)
+        let package = try package(in: archive)
+        return BookImport(
+            document: try document(in: archive, package: package),
+            coverImage: coverImage(in: archive, package: package)
+        )
+    }
+
+    func importBook(contentsOf url: URL) throws -> BookImport {
+        try importBook(try Data(contentsOf: url))
+    }
+
+    private func document(in archive: ZipArchive, package: EpubPackage) throws -> BookDocument {
+        let chapters = try package.spine.map { path in
+            try EpubChapterScanner.scan(try text(of: path, in: archive))
+        }
+        return BookDocument(title: package.title, author: package.author, chapters: chapters)
+    }
+
+    private func coverImage(in archive: ZipArchive, package: EpubPackage) -> Data? {
+        guard let path = package.coverPath else {
+            return nil
+        }
+        return try? archive.data(for: path)
     }
 
     private func package(in archive: ZipArchive) throws -> EpubPackage {

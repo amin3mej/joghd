@@ -12,18 +12,21 @@ struct LibraryEntry: Identifiable, Hashable, Codable {
     var author: String?
     var format: TextFormat
     var importedAt: Date
+    var coverImageData: Data?
 
     init(
         id: UUID = UUID(),
         title: String,
         author: String? = nil,
         format: TextFormat,
-        importedAt: Date = .now
+        importedAt: Date = .now,
+        coverImageData: Data? = nil
     ) {
         self.id = id
         self.title = title
         self.author = author
         self.format = format
         self.importedAt = importedAt
+        self.coverImageData = coverImageData
     }
 }
