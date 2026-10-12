@@ -29,6 +29,9 @@ struct JoghdApp: App {
                 }
         }
         .environment(library)
+        .task {
+            await library.backfillMissingCovers()
+        }
         .overlay {
             if importActivity.isActive {
                 ProgressView("Opening…")

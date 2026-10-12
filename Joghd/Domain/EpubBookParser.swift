@@ -33,6 +33,16 @@ struct EpubBookParser {
         try importBook(try Data(contentsOf: url))
     }
 
+    func coverImage(_ data: Data) throws -> Data? {
+        let archive = try ZipArchive(data: data)
+        let package = try package(in: archive)
+        return coverImage(in: archive, package: package)
+    }
+
+    func coverImage(contentsOf url: URL) throws -> Data? {
+        try coverImage(try Data(contentsOf: url))
+    }
+
     private func document(in archive: ZipArchive, package: EpubPackage) throws -> BookDocument {
         let chapters = try package.spine.map { path in
             try EpubChapterScanner.scan(try text(of: path, in: archive))
