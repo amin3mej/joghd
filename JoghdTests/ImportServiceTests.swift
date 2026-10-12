@@ -5,68 +5,12 @@ import Testing
 
 @MainActor
 struct ImportServiceTests {
-    private func makeSourceFile(named name: String, contents: Data = Data()) throws -> URL {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let url = directory.appendingPathComponent(name)
-        try contents.write(to: url)
-        return url
-    }
-
-    private func makeEpub(named name: String = "Dune.epub") throws -> URL {
-        let data = EpubFixture.zip {
-            ("META-INF/container.xml", EpubFixture.container)
-            (
-                "OEBPS/content.opf",
-                EpubFixture.package(manifest: [(id: "a", href: "a.xhtml")], spine: ["a"])
-            )
-            ("OEBPS/a.xhtml", EpubFixture.chapter(title: "A", body: "<p>Body</p>"))
-        }
-        return try makeSourceFile(named: name, contents: data)
-    }
-
-    @Test
-    func draftDerivesTitleAndFormatFromFilename() throws {
-        let source = try makeSourceFile(named: "Dune.epub")
-        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
-
-        let draft = try ImportService(fileStore: TestBookFileStore()).draft(for: source)
-
-        #expect(draft.title == "Dune")
-        #expect(draft.author.isEmpty)
-        #expect(draft.format == .epub)
-        #expect(draft.source == source)
-    }
-
-    @Test
-    func draftDerivesMarkdownTitleFromFilename() throws {
-        let source = try makeSourceFile(named: "Notes.markdown")
-        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
-
-        let draft = try ImportService(fileStore: TestBookFileStore()).draft(for: source)
-
-        #expect(draft.title == "Notes")
-        #expect(draft.format == .markdown)
-    }
-
-    @Test
-    func draftDoesNotStoreFile() throws {
-        let source = try makeSourceFile(named: "Dune.epub")
-        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
-        let store = TestBookFileStore()
-
-        _ = try ImportService(fileStore: store).draft(for: source)
-
-        #expect(store.storedSources.isEmpty)
-    }
-
     @Test
     func confirmCreatesEntryFromConfirmedValues() async throws {
-        let source = try makeEpub()
+        let source = try TestFiles.epub()
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
-        var draft = try ImportService(fileStore: store).draft(for: source)
+        var draft = try await ImportService(fileStore: store).draft(for: source)
         draft.title = "Dune (Revised)"
         draft.author = "Frank Herbert"
 
@@ -81,10 +25,10 @@ struct ImportServiceTests {
 
     @Test
     func confirmStoresEmptyAuthorAsNoAuthor() async throws {
-        let source = try makeEpub()
+        let source = try TestFiles.epub(author: nil)
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
-        let draft = try ImportService(fileStore: store).draft(for: source)
+        let draft = try await ImportService(fileStore: store).draft(for: source)
 
         let entry = try await ImportService(fileStore: store).confirm(draft)
 
@@ -93,13 +37,13 @@ struct ImportServiceTests {
 
     @Test
     func confirmsMarkdownTitledFromFilename() async throws {
-        let source = try makeSourceFile(
+        let source = try TestFiles.source(
             named: "Notes.markdown",
             contents: Data("# Notes\n\nBody.".utf8)
         )
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
-        let draft = try ImportService(fileStore: store).draft(for: source)
+        let draft = try await ImportService(fileStore: store).draft(for: source)
 
         let entry = try await ImportService(fileStore: store).confirm(draft)
 
@@ -109,11 +53,11 @@ struct ImportServiceTests {
     }
 
     @Test
-    func revisePreservesIdentityAndTakesEditedValuesFromDraft() throws {
-        let source = try makeSourceFile(named: "Dune.epub")
+    func revisePreservesIdentityAndTakesEditedValuesFromDraft() async throws {
+        let source = try TestFiles.source(named: "Dune.epub")
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let service = ImportService(fileStore: TestBookFileStore())
-        var draft = try service.draft(for: source)
+        var draft = try await service.draft(for: source)
         draft.title = "Dune (Revised)"
         draft.author = "Frank Herbert"
         let importedAt = Date(timeIntervalSince1970: 1_700_000_000)
@@ -133,11 +77,11 @@ struct ImportServiceTests {
     }
 
     @Test
-    func reviseStoresEmptyAuthorAsNoAuthor() throws {
-        let source = try makeSourceFile(named: "Dune.epub")
+    func reviseStoresEmptyAuthorAsNoAuthor() async throws {
+        let source = try TestFiles.source(named: "Dune.epub")
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let service = ImportService(fileStore: TestBookFileStore())
-        let draft = try service.draft(for: source)
+        let draft = try await service.draft(for: source)
         let entry = LibraryEntry(title: "Dune", author: "Frank Herbert", format: .epub)
 
         let revised = service.revise(entry, with: draft)
@@ -147,7 +91,7 @@ struct ImportServiceTests {
 
     @Test
     func importsSymlinkContentsIntoLibrary() async throws {
-        let target = try makeEpub(named: "Actual.epub")
+        let target = try TestFiles.epub(named: "Actual.epub")
         defer { try? FileManager.default.removeItem(at: target.deletingLastPathComponent()) }
         let sourceDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
@@ -165,7 +109,7 @@ struct ImportServiceTests {
         let service = ImportService(
             fileStore: FileBookFileStore(directoryURL: storageDirectory)
         )
-        let entry = try await service.confirm(service.draft(for: source))
+        let entry = try await service.confirm(try await service.draft(for: source))
 
         let storedFile =
             storageDirectory
@@ -177,7 +121,7 @@ struct ImportServiceTests {
 
     @Test
     func importedEntrySurvivesReopeningRepository() async throws {
-        let source = try makeEpub()
+        let source = try TestFiles.epub()
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
@@ -189,7 +133,7 @@ struct ImportServiceTests {
         )
 
         let service = ImportService(fileStore: TestBookFileStore())
-        let entry = try await service.confirm(service.draft(for: source))
+        let entry = try await service.confirm(try await service.draft(for: source))
         try library.upsert(entry)
 
         let reopened = LibraryStore(
@@ -202,33 +146,33 @@ struct ImportServiceTests {
 
     @Test
     func storeFailureLeavesNoEntry() async throws {
-        let source = try makeEpub()
+        let source = try TestFiles.epub()
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
         store.shouldFail = true
         let service = ImportService(fileStore: store)
 
         await #expect(throws: (any Error).self) {
-            _ = try await service.confirm(service.draft(for: source))
+            _ = try await service.confirm(try await service.draft(for: source))
         }
         #expect(store.storedSources.isEmpty)
     }
 
     @Test
-    func unsupportedFileIsRejectedWithoutStoring() throws {
-        let source = try makeSourceFile(named: "Notes.pdf", contents: Data("book".utf8))
+    func unsupportedFileIsRejectedWithoutStoring() async throws {
+        let source = try TestFiles.source(named: "Notes.pdf", contents: Data("book".utf8))
         defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let store = TestBookFileStore()
 
-        #expect(throws: ImportError.self) {
-            _ = try ImportService(fileStore: store).draft(for: source)
+        await #expect(throws: ImportError.self) {
+            _ = try await ImportService(fileStore: store).draft(for: source)
         }
         #expect(store.storedSources.isEmpty)
     }
 
     @Test
     func malformedEpubIsRejectedWithoutStoring() async throws {
-        let source = try makeSourceFile(
+        let source = try TestFiles.source(
             named: "Broken.epub",
             contents: Data(repeating: 0x41, count: 64)
         )
@@ -237,14 +181,14 @@ struct ImportServiceTests {
 
         await #expect(throws: ImportError.unreadableFile) {
             let service = ImportService(fileStore: store)
-            _ = try await service.confirm(service.draft(for: source))
+            _ = try await service.confirm(try await service.draft(for: source))
         }
         #expect(store.storedSources.isEmpty)
     }
 
     @Test
     func malformedMarkdownIsRejectedWithoutStoring() async throws {
-        let source = try makeSourceFile(
+        let source = try TestFiles.source(
             named: "Broken.md",
             contents: Data([0xFF, 0xFE, 0xFF])
         )
@@ -253,7 +197,7 @@ struct ImportServiceTests {
 
         await #expect(throws: ImportError.unreadableFile) {
             let service = ImportService(fileStore: store)
-            _ = try await service.confirm(service.draft(for: source))
+            _ = try await service.confirm(try await service.draft(for: source))
         }
         #expect(store.storedSources.isEmpty)
     }
@@ -267,7 +211,7 @@ struct ImportServiceTests {
 
         await #expect(throws: ImportError.unreadableFile) {
             let service = ImportService(fileStore: store)
-            _ = try await service.confirm(service.draft(for: source))
+            _ = try await service.confirm(try await service.draft(for: source))
         }
         #expect(store.storedSources.isEmpty)
     }

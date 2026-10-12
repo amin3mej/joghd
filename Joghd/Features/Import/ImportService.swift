@@ -37,11 +37,33 @@ struct ImportService {
         return staged
     }
 
-    func draft(for source: URL) throws -> ImportDraft {
-        ImportDraft(
+    nonisolated private static func metadata(
+        at source: URL, format: LibraryEntry.TextFormat
+    ) throws -> BookMetadata {
+        switch format {
+        case .epub:
+            try EpubBookParser().metadata(contentsOf: source)
+
+        case .markdown:
+            try MarkdownBookParser().metadata(contentsOf: source)
+
+        case .pdf:
+            throw ImportError.unsupportedFormat
+        }
+    }
+
+    func draft(for source: URL) async throws -> ImportDraft {
+        let format = try LibraryEntry.TextFormat(sourceURL: source)
+        let isAccessing = source.startAccessingSecurityScopedResource()
+        defer { if isAccessing { source.stopAccessingSecurityScopedResource() } }
+        let metadata = await Task.detached(priority: .userInitiated) {
+            try? Self.metadata(at: source, format: format)
+        }.value
+        return ImportDraft(
             source: source,
-            format: try LibraryEntry.TextFormat(sourceURL: source),
-            title: source.deletingPathExtension().lastPathComponent
+            format: format,
+            title: metadata?.title ?? source.deletingPathExtension().lastPathComponent,
+            author: metadata?.author ?? ""
         )
     }
 

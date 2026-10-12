@@ -8,6 +8,7 @@ struct JoghdApp: App {
     @State private var pendingEntry: LibraryEntry?
     @State private var importActivity = ImportActivity()
     @State private var importError: String?
+    @State private var currentSelectionID = UUID()
     private let importService: ImportService
 
     var body: some Scene {
@@ -65,11 +66,22 @@ struct JoghdApp: App {
         switch result {
         case .success(let url):
             pendingEntry = nil
-            do {
-                draft = try importService.draft(for: url)
-                importError = nil
-            } catch {
-                importError = error.localizedDescription
+            let selectionID = UUID()
+            currentSelectionID = selectionID
+            Task {
+                do {
+                    let newDraft = try await importService.draft(for: url)
+                    guard currentSelectionID == selectionID else {
+                        return
+                    }
+                    draft = newDraft
+                    importError = nil
+                } catch {
+                    guard currentSelectionID == selectionID else {
+                        return
+                    }
+                    importError = error.localizedDescription
+                }
             }
 
         case .failure(let error):
