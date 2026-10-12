@@ -11,16 +11,14 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack {
             deleteAlerts(libraryContent)
-                .navigationTitle("Library")
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    LibraryHeader {
+                        isImporting = true
+                    }
+                }
+                .toolbar(.hidden, for: .navigationBar)
                 .onChange(of: scenePhase, initial: true) { _, phase in
                     if phase == .active { reload() }
-                }
-                .toolbar {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Import", systemImage: "plus") {
-                            isImporting = true
-                        }
-                    }
                 }
         }
     }
