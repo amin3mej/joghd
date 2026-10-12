@@ -13,19 +13,11 @@ final class LibraryStore {
         self.fileStore = fileStore
     }
 
-    nonisolated private static func coverThumbnail(
-        at url: URL, format: LibraryEntry.TextFormat
-    ) -> Data? {
-        switch format {
-        case .epub:
-            guard let cover = try? EpubBookParser().coverImage(contentsOf: url) else {
-                return nil
-            }
-            return BookCoverThumbnail.make(from: cover)
-
-        case .markdown, .pdf:
+    nonisolated private static func coverThumbnail(fromEpubAt url: URL) -> Data? {
+        guard let cover = try? EpubBookParser().coverImage(contentsOf: url) else {
             return nil
         }
+        return BookCoverThumbnail.make(from: cover)
     }
 
     func reload() throws {
@@ -44,9 +36,8 @@ final class LibraryStore {
             guard let fileURL = try? fileStore.storedFile(for: entry) else {
                 continue
             }
-            let format = entry.format
             let thumbnail = await Task.detached(priority: .utility) {
-                Self.coverThumbnail(at: fileURL, format: format)
+                Self.coverThumbnail(fromEpubAt: fileURL)
             }.value
             guard let thumbnail else {
                 continue
