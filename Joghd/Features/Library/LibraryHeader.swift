@@ -51,6 +51,7 @@ struct LibraryHeader: View {
     private var importButton: some View {
         Button(action: onImport) {
             Label("Import", systemImage: "plus")
+                .labelStyle(.iconOnly)
         }
         .controlSize(.large)
         .fixedSize(horizontal: true, vertical: false)
