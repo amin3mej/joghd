@@ -183,4 +183,92 @@ struct LibraryStoreTests {
         #expect(store.entries.isEmpty)
         #expect(try repository.entries().isEmpty)
     }
+
+    @Test
+    func backfillPopulatesMissingCoverFromStoredEpub() async throws {
+        let source = try coverEpub()
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+        let entry = LibraryEntry(title: "The Book", format: .epub)
+        let repository = TestLibraryRepository(savedEntries: [entry])
+        let fileStore = TestBookFileStore()
+        fileStore.storedSources[entry.id] = source
+        let store = LibraryStore(repository: repository, fileStore: fileStore)
+        try store.reload()
+
+        await store.backfillMissingCovers()
+
+        let backed = try #require(store.entries.first?.coverImageData)
+        #expect(CoverFixture.pixelSize(of: backed) != nil)
+        #expect(repository.savedEntries.first?.coverImageData != nil)
+    }
+
+    @Test
+    func backfillLeavesCoverlessEpubUnchanged() async throws {
+        let source = try TestFiles.source(
+            named: "NoCover.epub",
+            contents: EpubCoverFixture.epub()
+        )
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+        let entry = LibraryEntry(title: "The Book", format: .epub)
+        let repository = TestLibraryRepository(savedEntries: [entry])
+        let fileStore = TestBookFileStore()
+        fileStore.storedSources[entry.id] = source
+        let store = LibraryStore(repository: repository, fileStore: fileStore)
+        try store.reload()
+
+        await store.backfillMissingCovers()
+
+        #expect(store.entries.first?.coverImageData == nil)
+        #expect(repository.savedEntries.first?.coverImageData == nil)
+    }
+
+    @Test
+    func backfillSkipsMarkdownEntries() async throws {
+        let entry = LibraryEntry(title: "Notes", format: .markdown)
+        let repository = TestLibraryRepository(savedEntries: [entry])
+        let store = LibraryStore(repository: repository, fileStore: TestBookFileStore())
+        try store.reload()
+
+        await store.backfillMissingCovers()
+
+        #expect(store.entries.first?.coverImageData == nil)
+    }
+
+    @Test
+    func backfillPreservesExistingCover() async throws {
+        let cover = Data("thumbnail".utf8)
+        let entry = LibraryEntry(title: "Dune", format: .epub, coverImageData: cover)
+        let repository = TestLibraryRepository(savedEntries: [entry])
+        let store = LibraryStore(repository: repository, fileStore: TestBookFileStore())
+        try store.reload()
+
+        await store.backfillMissingCovers()
+
+        #expect(store.entries.first?.coverImageData == cover)
+        #expect(repository.savedEntries.first?.coverImageData == cover)
+    }
+
+    @Test
+    func backfillSkipsEntryWithMissingStoredFile() async throws {
+        let entry = LibraryEntry(title: "Gone", format: .epub)
+        let repository = TestLibraryRepository(savedEntries: [entry])
+        let store = LibraryStore(repository: repository, fileStore: TestBookFileStore())
+        try store.reload()
+
+        await store.backfillMissingCovers()
+
+        #expect(store.entries.first?.coverImageData == nil)
+        #expect(repository.savedEntries.first?.coverImageData == nil)
+    }
+
+    private func coverEpub() throws -> URL {
+        try TestFiles.source(
+            named: "Cover.epub",
+            contents: EpubCoverFixture.epub(
+                manifest: [(id: "a", href: "a.xhtml"), (id: "cover", href: "cover.png")],
+                properties: ["cover": "cover-image"],
+                resources: [("OEBPS/cover.png", CoverFixture.imageData(width: 400, height: 600))]
+            )
+        )
+    }
 }

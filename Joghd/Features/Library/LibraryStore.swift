@@ -13,8 +13,55 @@ final class LibraryStore {
         self.fileStore = fileStore
     }
 
+    nonisolated private static func coverThumbnail(
+        at url: URL, format: LibraryEntry.TextFormat
+    ) -> Data? {
+        switch format {
+        case .epub:
+            guard let cover = try? EpubBookParser().coverImage(contentsOf: url) else {
+                return nil
+            }
+            return BookCoverThumbnail.make(from: cover)
+
+        case .markdown, .pdf:
+            return nil
+        }
+    }
+
     func reload() throws {
         entries = try repository.entries()
+    }
+
+    func backfillMissingCovers() async {
+        guard let current = try? repository.entries() else {
+            return
+        }
+        var didUpdate = false
+        for var entry in current where entry.coverImageData == nil {
+            guard entry.format == .epub else {
+                continue
+            }
+            guard let fileURL = try? fileStore.storedFile(for: entry) else {
+                continue
+            }
+            let format = entry.format
+            let thumbnail = await Task.detached(priority: .utility) {
+                Self.coverThumbnail(at: fileURL, format: format)
+            }.value
+            guard let thumbnail else {
+                continue
+            }
+            entry.coverImageData = thumbnail
+            do {
+                try repository.upsert(entry)
+                didUpdate = true
+            } catch {
+                continue
+            }
+        }
+        if didUpdate {
+            try? reload()
+        }
     }
 
     func upsert(_ entry: LibraryEntry) throws {

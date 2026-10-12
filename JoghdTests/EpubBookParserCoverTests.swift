@@ -94,6 +94,35 @@ struct EpubBookParserCoverTests {
     }
 
     @Test
+    func coverImageExtractsTheCoverWithoutParsingChapters() throws {
+        let cover = CoverFixture.imageData(width: 8, height: 12)
+        let package = EpubFixture.package(
+            manifest: [(id: "a", href: "a.xhtml"), (id: "cover", href: "cover.png")],
+            spine: ["a"],
+            properties: ["cover": "cover-image"]
+        )
+        var entries: [(String, Data)] = []
+        entries.append(("META-INF/container.xml", Data(EpubFixture.container.utf8)))
+        entries.append(("OEBPS/content.opf", Data(package.utf8)))
+        entries.append(("OEBPS/a.xhtml", Data("<html><head></head></html>".utf8)))
+        entries.append(("OEBPS/cover.png", cover))
+        let data = EpubFixture.zipBytes(entries)
+
+        let extracted = try parser.coverImage(data)
+
+        #expect(extracted == cover)
+    }
+
+    @Test
+    func coverImageWithoutACoverDeclarationReturnsNil() throws {
+        let data = EpubCoverFixture.epub()
+
+        let extracted = try parser.coverImage(data)
+
+        #expect(extracted == nil)
+    }
+
+    @Test
     func parsingStillSurfacesTheDocumentAlongsideTheCover() throws {
         let cover = CoverFixture.imageData(width: 8, height: 12)
         let data = EpubCoverFixture.epub(
