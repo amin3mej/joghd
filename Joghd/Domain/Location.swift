@@ -3,21 +3,13 @@ import Foundation
 struct Location: Hashable, Codable {
     static let charactersPerLocation = 128
 
-    let index: Int
+    let characterOffset: Int
 
-    var characterOffset: Int {
-        index * Self.charactersPerLocation
-    }
-
-    var lastCharacterOffset: Int {
-        characterOffset + Self.charactersPerLocation - 1
+    init(characterOffset: Int) {
+        self.characterOffset = max(0, characterOffset)
     }
 
     init(index: Int) {
-        self.index = max(0, index)
-    }
-
-    init(containing characterOffset: Int) {
-        self.init(index: max(0, characterOffset) / Self.charactersPerLocation)
+        self.init(characterOffset: max(0, index) * Self.charactersPerLocation)
     }
 }

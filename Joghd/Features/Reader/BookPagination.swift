@@ -42,21 +42,15 @@ enum BookPagination {
     }
 
     static func pageIndex(for location: Location, in pages: [BookPage]) -> Int {
-        guard let first = pages.first, let last = pages.last else {
+        guard let first = pages.first else {
             return 0
         }
-        let start = location.characterOffset
-        let end = min(location.lastCharacterOffset, NSMaxRange(last.range) - 1)
+        let offset = location.characterOffset
         if let index = pages.firstIndex(where: { page in
-            start <= page.range.location && page.range.location <= end
+            page.range.location <= offset && offset < NSMaxRange(page.range)
         }) {
             return index
         }
-        if let index = pages.firstIndex(where: { page in
-            page.range.location <= start && start < NSMaxRange(page.range)
-        }) {
-            return index
-        }
-        return start < first.range.location ? 0 : pages.count - 1
+        return offset < first.range.location ? 0 : pages.count - 1
     }
 }

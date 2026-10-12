@@ -87,7 +87,7 @@ struct BookPaginationTests {
         let first = page(NSRange(location: 0, length: 300))
         let second = page(NSRange(location: 300, length: 300))
 
-        #expect(BookPagination.pageIndex(for: Location(index: 2), in: [first, second]) == 1)
+        #expect(BookPagination.pageIndex(for: Location(characterOffset: 300), in: [first, second]) == 1)
     }
 
     @Test
@@ -97,7 +97,21 @@ struct BookPaginationTests {
         )
 
         for index in pages.indices {
-            let location = Location(containing: pages[index].range.location)
+            let location = Location(characterOffset: pages[index].range.location)
+            #expect(BookPagination.pageIndex(for: location, in: pages) == index)
+        }
+    }
+
+    @Test
+    func shortPagesInTheSameLocationRestoreToTheirOwnPage() {
+        let pages = [
+            page(NSRange(location: 0, length: 60)),
+            page(NSRange(location: 60, length: 60)),
+            page(NSRange(location: 120, length: 60)),
+        ]
+
+        for index in pages.indices {
+            let location = Location(characterOffset: pages[index].range.location)
             #expect(BookPagination.pageIndex(for: location, in: pages) == index)
         }
     }
@@ -107,7 +121,7 @@ struct BookPaginationTests {
         let text = longText()
         let wide = BookPagination.pages(of: text, pageSize: CGSize(width: 400, height: 600))
         let narrow = BookPagination.pages(of: text, pageSize: CGSize(width: 250, height: 350))
-        let location = Location(containing: wide[4].range.location)
+        let location = Location(characterOffset: wide[4].range.location)
         let locationRange = NSRange(location: location.characterOffset, length: 128)
         let index = BookPagination.pageIndex(for: location, in: narrow)
 

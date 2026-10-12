@@ -9,6 +9,7 @@ struct PaginationView: View {
     @State private var pages: [BookPage] = []
     @State private var currentPageID: Int?
     @State private var currentLocation: Location?
+    @State private var isRestoring = false
 
     var body: some View {
         ScrollView(.horizontal) {
@@ -34,6 +35,10 @@ struct PaginationView: View {
             paginate(pageSize)
         }
         .onChange(of: currentPageID) { _, index in
+            guard !isRestoring else {
+                isRestoring = false
+                return
+            }
             reportPosition(at: index)
         }
     }
@@ -46,14 +51,17 @@ struct PaginationView: View {
         pages = newPages
         let index = resumeLocation.map { BookPagination.pageIndex(for: $0, in: newPages) } ?? 0
         currentLocation = resumeLocation
-        currentPageID = index
+        if currentPageID != index {
+            isRestoring = true
+            currentPageID = index
+        }
     }
 
     private func reportPosition(at index: Int?) {
         guard let index, pages.indices.contains(index) else {
             return
         }
-        let location = Location(containing: pages[index].range.location)
+        let location = Location(characterOffset: pages[index].range.location)
         currentLocation = location
         onPositionChange(location)
     }
