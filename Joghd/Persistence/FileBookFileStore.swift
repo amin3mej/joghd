@@ -27,6 +27,22 @@ final class FileBookFileStore: BookFileStore {
         }.value
     }
 
+    func storedFile(for entry: LibraryEntry) throws -> URL {
+        let entryDirectory = entryDirectory(for: entry)
+        guard FileManager.default.fileExists(atPath: entryDirectory.path) else {
+            throw BookFileError.missingFile
+        }
+        let files = try FileManager.default.contentsOfDirectory(
+            at: entryDirectory, includingPropertiesForKeys: nil
+        )
+        guard
+            let file = files.min(by: { $0.lastPathComponent < $1.lastPathComponent })
+        else {
+            throw BookFileError.missingFile
+        }
+        return file
+    }
+
     func remove(for entry: LibraryEntry) throws {
         let entryDirectory = entryDirectory(for: entry)
         guard FileManager.default.fileExists(atPath: entryDirectory.path) else {

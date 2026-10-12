@@ -11,12 +11,15 @@ struct LibraryGridView: View {
                 spacing: LibraryGridMetrics.spacing
             ) {
                 ForEach(entries) { entry in
-                    LibraryEntryCell(entry: entry)
-                        .contextMenu {
-                            Button("Delete", role: .destructive) {
-                                onDelete(entry)
-                            }
+                    NavigationLink(value: entry) {
+                        LibraryEntryCell(entry: entry)
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button("Delete", role: .destructive) {
+                            onDelete(entry)
                         }
+                    }
                 }
             }
             .padding()
@@ -25,7 +28,9 @@ struct LibraryGridView: View {
 }
 
 #Preview {
-    LibraryGridView(
-        entries: [LibraryEntry(title: "Dune", author: "Frank Herbert", format: .epub)]
-    ) { _ in () }
+    NavigationStack {
+        LibraryGridView(
+            entries: [LibraryEntry(title: "Dune", author: "Frank Herbert", format: .epub)]
+        ) { _ in () }
+    }
 }

@@ -10,35 +10,45 @@ struct JoghdApp: App {
     @State private var importError: String?
     @State private var currentSelectionID = UUID()
     private let importService: ImportService
+    private let fileStore: any BookFileStore
 
     var body: some Scene {
         WindowGroup {
+            rootView
+        }
+    }
+
+    private var rootView: some View {
+        NavigationStack {
             LibraryView(isImporting: $isImporting)
-                .environment(library)
-                .overlay {
-                    if importActivity.isActive {
-                        ProgressView("Opening…")
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(.regularMaterial)
-                            .ignoresSafeArea()
-                    }
+                .navigationDestination(for: LibraryEntry.self) { entry in
+                    ReaderView(entry: entry, fileStore: fileStore)
                 }
-                .fileImporter(
-                    isPresented: $isImporting,
-                    allowedContentTypes: ImportFileTypes.allowed,
-                    onCompletion: handleSelection
-                )
-                .sheet(item: $draft) { pending in
-                    ImportConfirmationView(draft: pending, onConfirm: confirmImport)
-                }
-                .onOpenURL { handleSelection(.success($0)) }
-                .alert("Import failed", isPresented: isShowingImportError) {
-                    Button("OK", role: .cancel) {
-                        importError = nil
-                    }
-                } message: {
-                    Text(importError ?? "")
-                }
+        }
+        .environment(library)
+        .overlay {
+            if importActivity.isActive {
+                ProgressView("Opening…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.regularMaterial)
+                    .ignoresSafeArea()
+            }
+        }
+        .fileImporter(
+            isPresented: $isImporting,
+            allowedContentTypes: ImportFileTypes.allowed,
+            onCompletion: handleSelection
+        )
+        .sheet(item: $draft) { pending in
+            ImportConfirmationView(draft: pending, onConfirm: confirmImport)
+        }
+        .onOpenURL { handleSelection(.success($0)) }
+        .alert("Import failed", isPresented: isShowingImportError) {
+            Button("OK", role: .cancel) {
+                importError = nil
+            }
+        } message: {
+            Text(importError ?? "")
         }
     }
 
@@ -52,14 +62,15 @@ struct JoghdApp: App {
     }
 
     init() {
-        let fileStore = FileBookFileStore()
+        let store = FileBookFileStore()
+        self.fileStore = store
         _library = State(
             initialValue: LibraryStore(
                 repository: FileLibraryRepository(),
-                fileStore: fileStore
+                fileStore: store
             )
         )
-        importService = ImportService(fileStore: fileStore)
+        importService = ImportService(fileStore: store)
     }
 
     private func handleSelection(_ result: Result<URL, any Error>) {
