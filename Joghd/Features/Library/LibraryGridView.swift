@@ -24,6 +24,7 @@ struct LibraryGridView: View {
             }
             .padding()
         }
+        .scrollDismissesKeyboard(.interactively)
     }
 }
 
