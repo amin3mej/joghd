@@ -13,15 +13,14 @@ struct LibrarySearchBar: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        platformSearchField
-            .padding(.horizontal)
-            .padding(.vertical, Self.verticalSpacing)
-            .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    applySearchButton
-                }
+        HStack(spacing: Self.fieldSpacing) {
+            platformSearchField
+            if isFocused {
+                applySearchButton
             }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, Self.verticalSpacing)
     }
 
     private var applySearchButton: some View {
@@ -29,6 +28,7 @@ struct LibrarySearchBar: View {
             isFocused = false
         } label: {
             Image(systemName: "magnifyingglass")
+                .frame(minWidth: Self.clearButtonSize, minHeight: Self.clearButtonSize)
         }
         .accessibilityLabel("Search")
     }
@@ -36,9 +36,11 @@ struct LibrarySearchBar: View {
     @ViewBuilder
     private var platformSearchField: some View {
         if #available(iOS 26, *) {
-            searchField.glassEffect(.regular.interactive(), in: .rect(cornerRadius: Self.cornerRadius))
+            searchField
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: Self.cornerRadius))
         } else {
-            searchField.background(.regularMaterial, in: RoundedRectangle(cornerRadius: Self.cornerRadius))
+            searchField
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Self.cornerRadius))
         }
     }
 

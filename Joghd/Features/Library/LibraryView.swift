@@ -11,19 +11,23 @@ struct LibraryView: View {
     var body: some View {
         @Bindable var library = library
 
-        deleteAlerts(libraryContent)
-            .safeAreaInset(edge: .top, spacing: 0) {
-                LibraryHeader {
-                    isImporting = true
-                }
+        deleteAlerts(
+            ZStack {
+                libraryContent
             }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                LibrarySearchBar(query: $library.searchQuery)
+        )
+        .safeAreaInset(edge: .top, spacing: 0) {
+            LibraryHeader {
+                isImporting = true
             }
-            .toolbar(.hidden, for: .navigationBar)
-            .onChange(of: scenePhase, initial: true) { _, phase in
-                if phase == .active { reload() }
-            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            LibrarySearchBar(query: $library.searchQuery)
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            if phase == .active { reload() }
+        }
     }
 
     @ViewBuilder
